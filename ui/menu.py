@@ -357,13 +357,13 @@ class Menu:
                     for folder_name, pattern in windows_defaults.items():
                         if pattern not in exclude_paths:
                             exclude_paths.append(pattern)
-                    print(f\"   \033[92m[\u2713] Added {len(windows_defaults)} Windows system folders to exclusions\033[0m\")
+                    print(f"   \033[92m[✓] Added {len(windows_defaults)} Windows system folders to exclusions\033[0m")
                 elif win_choice == 'C':
-                    print(\"\\n   \033[90mEnter folder numbers to exclude (e.g., 1,3,5):\033[0m\")
+                    print("\n   \033[90mEnter folder numbers to exclude (e.g., 1,3,5):\033[0m")
                     for idx, (name, pattern) in enumerate(windows_defaults.items(), 1):
-                        print(f\"   \033[96m[{idx}]\033[0m {name:25} ({pattern})\")
+                        print(f"   \033[96m[{idx}]\033[0m {name:25} ({pattern})")
                     
-                    selections = input(\"   Your selections: \").strip()
+                    selections = input("   Your selections: ").strip()
                     if selections:
                         try:
                             selected_indices = [int(x.strip()) for x in selections.split(',')]
@@ -373,26 +373,26 @@ class Menu:
                                     pattern = items[idx-1][1]
                                     if pattern not in exclude_paths:
                                         exclude_paths.append(pattern)
-                            print(f\"   \033[92m[\u2713] Added {len(selected_indices)} folder(s) to exclusions\033[0m\")
+                            print(f"   \033[92m[✓] Added {len(selected_indices)} folder(s) to exclusions\033[0m")
                         except:
-                            print(\"   \033[91m[!] Invalid selection, skipping\033[0m\")
+                            print("   \033[91m[!] Invalid selection, skipping\033[0m")
                 
                 time.sleep(1)
 
             # 8. Additional Filters
             print("\n\033[93m8. ADDITIONAL FILTERS (comma-separated patterns)\033[0m")
-            print(\"   Examples: *.tmp*, node_modules, .git\")
-            print(\"   \033[90m(These will be added to any Windows exclusions above)\033[0m\")
+            print("   Examples: *.tmp*, node_modules, .git")
+            print("   \033[90m(These will be added to any Windows exclusions above)\033[0m")
             
-            more_exclude_paths = self.get_list_input(\"   More Exclude Paths\", \"exclude_paths\")
+            more_exclude_paths = self.get_list_input("   More Exclude Paths", "exclude_paths")
             exclude_paths.extend(more_exclude_paths)
-            self.defaults[\"exclude_paths\"] = exclude_paths
+            self.defaults["exclude_paths"] = exclude_paths
             
-            exclude_names = self.get_list_input(\"   Exclude Names\", \"exclude_names\")
-            self.defaults[\"exclude_names\"] = exclude_names
+            exclude_names = self.get_list_input("   Exclude Names", "exclude_names")
+            self.defaults["exclude_names"] = exclude_names
             
-            include_names = self.get_list_input(\"   Include Names (leave empty for all)\", \"include_names\")
-            self.defaults[\"include_names\"] = include_names
+            include_names = self.get_list_input("   Include Names (leave empty for all)", "include_names")
+            self.defaults["include_names"] = include_names
 
             # 9. Confirm Action
             print("\n\033[93m9. CONFIRM\033[0m")

@@ -4,9 +4,15 @@ block_cipher = None
 
 a = Analysis(
     ['main.py'],
-    pathex=[],
+    pathex=['.'],
     binaries=[],
-    datas=[],
+    datas=[
+        ('config', 'config'),
+        ('core', 'core'),
+        ('data', 'data'),
+        ('ui', 'ui'),
+        ('utils', 'utils'),
+    ],
     hiddenimports=[
         'sqlite3',
         'concurrent.futures',
@@ -14,6 +20,15 @@ a = Analysis(
         'argparse',
         'fnmatch',
         'shutil',
+        'config.settings',
+        'core.engine',
+        'core.controller',
+        'data.database',
+        'ui.menu',
+        'ui.dashboard',
+        'ui.reporter',
+        'utils.logger',
+        'utils.validators',
     ],
     hookspath=[],
     hooksconfig={},
