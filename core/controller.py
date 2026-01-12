@@ -97,4 +97,9 @@ class Controller:
                 
                 time.sleep(0.1)
         except ImportError:
-            pass  # Not on Windows, skip interactive keys
+            # msvcrt only available on Windows - notify user once
+            print("\033[90m[i] Interactive keyboard controls (P/H/S/Q) not available on this platform\033[0m")
+            print("\033[90m    Use Ctrl+C to interrupt the scan\033[0m")
+            # Keep thread alive but idle
+            while self.running:
+                time.sleep(1)

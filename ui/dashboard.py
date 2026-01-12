@@ -55,7 +55,7 @@ class Dashboard:
         while self.active:
             try:
                 cols = shutil.get_terminal_size().columns
-            except:
+            except OSError:
                 cols = 120
             
             s = spin[i % 4]

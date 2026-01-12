@@ -28,6 +28,25 @@ class Config:
             self.session_id = last_session['session_id']
             self.root_path = last_session['root_path']
             
+            # Validate resumed path exists and is accessible
+            if not self.root_path:
+                raise ValueError("Resume path is empty or None")
+            
+            if not os.path.exists(self.root_path):
+                raise ValueError(f"Resume path no longer exists: {self.root_path}\n"
+                               f"  (Drive may be unmounted or path was deleted)")
+            
+            if not os.path.isdir(self.root_path):
+                raise ValueError(f"Resume path is not a directory: {self.root_path}")
+            
+            try:
+                # Test read permissions by attempting to list directory
+                os.listdir(self.root_path)
+            except PermissionError:
+                raise ValueError(f"No permission to access resume path: {self.root_path}")
+            except OSError as e:
+                raise ValueError(f"Cannot access resume path: {self.root_path}\n  Error: {e}")
+            
             # Load saved config values
             saved = last_session['config']
             self.delete_mode = saved.get('delete_mode', args.delete)
@@ -116,8 +135,10 @@ class Config:
                         return "ssd"
                     elif "hdd" in media_type:
                         return "hdd"
-            except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
-                pass  # Fall through to heuristic
+            except subprocess.TimeoutExpired:
+                print("\033[90m[i] Disk detection timeout, defaulting to HDD\033[0m")
+            except (FileNotFoundError, OSError) as e:
+                print(f"\033[90m[i] PowerShell unavailable: {e}, defaulting to HDD\033[0m")
             
             # Heuristic: C: drive often SSD in modern systems
             if drive_letter.lower() == 'c':

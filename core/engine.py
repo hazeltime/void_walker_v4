@@ -21,6 +21,7 @@ class Engine:
         self.dashboard = Dashboard(config)
         self.controller = Controller(self) 
         self.queue = deque()
+        self.queue_lock = threading.Lock()
         self.lock = threading.Lock()
         self.paused = False
         self.running = True
@@ -54,12 +55,12 @@ class Engine:
             print(f"\033[92m[OK] Ready! Starting scan from: {self.config.root_path}\033[0m", flush=True)
             print(f"[*] Starting {self.config.workers} workers...", flush=True)
             print("")
-            self.queue.append((self.config.root_path, 0))
+            self._enqueue(self.config.root_path, 0)
             self.db.add_folder(self.config.root_path, 0)
         else:
             print("\033[93m[*] Loading resume state from cache...\033[0m", flush=True)
             self._load_resume_state()
-            print(f"\033[92m[OK] Resuming with {len(self.queue)} pending folders\033[0m", flush=True)
+            print(f"\033[92m[OK] Resuming with {self._queue_size()} pending folders\033[0m", flush=True)
             print("")
 
         self._process_queue()
@@ -84,10 +85,31 @@ class Engine:
     def _load_resume_state(self):
         pending = self.db.get_pending()
         for path, depth in pending:
+            with self.queue_lock:
+                self.queue.append((path, depth))
+
+    def _queue_size(self):
+        with self.queue_lock:
+            return len(self.queue)
+
+    def _pop_next(self):
+        with self.queue_lock:
+            if not self.queue:
+                return None
+            if self.config.strategy == "BFS":
+                return self.queue.popleft()
+            return self.queue.pop()
+
+    def _enqueue(self, path, depth):
+        with self.queue_lock:
             self.queue.append((path, depth))
+            return len(self.queue)
 
     def _is_filtered(self, path, name, depth):
         if depth > self.config.max_depth: return True
+        if self.config.include_names:
+            if not any(fnmatch.fnmatch(name, pat) for pat in self.config.include_names):
+                return True
         for pat in self.config.exclude_names:
             if fnmatch.fnmatch(name, pat): return True
         for pat in self.config.exclude_paths:
@@ -113,17 +135,15 @@ class Engine:
                     break
                 
                 # Submit work while queue has items and we have capacity
-                while len(futures) < self.config.workers * 2 and self.queue and self.running:
-                    try:
-                        if self.config.strategy == "BFS":
-                            path, depth = self.queue.popleft()
-                        else:
-                            path, depth = self.queue.pop()
-                        
-                        future = executor.submit(self._scan_folder, path, depth)
-                        futures.append(future)
-                    except IndexError:
+                while len(futures) < self.config.workers * 2 and self.running:
+                    item = self._pop_next()
+                    if not item:
                         break
+                    path, depth = item
+                    future = executor.submit(self._scan_folder, path, depth)
+                    futures.append(future)
+                    with self.lock:
+                        self.dashboard.stats['queue_depth'] = self._queue_size()
                 
                 # Process completed futures
                 if futures:
@@ -145,7 +165,7 @@ class Engine:
                         print(f"[*] Progress: {self.total_scanned} folders scanned, {self.total_empty} empty found...", flush=True)
                 
                 # Check if we're done
-                if not self.queue and not futures:
+                if self._queue_size() == 0 and not futures:
                     break
                 
                 time.sleep(0.01)  # Small sleep to prevent busy-wait
@@ -178,9 +198,10 @@ class Engine:
             except Exception as e:
                 self.logger.debug(f"Error checking symlink status for {path}: {e}")
 
+            queue_depth = self._queue_size()
             with self.lock:
                 self.dashboard.update_current(path)
-                self.dashboard.stats['queue_depth'] = len(self.queue)
+                self.dashboard.stats['queue_depth'] = queue_depth
 
             with os.scandir(path) as it:
                 file_count = 0
@@ -194,11 +215,20 @@ class Engine:
                             file_count += 1
                         elif entry.is_dir():
                             if not self._is_filtered(entry.path, entry.name, depth + 1):
+                                queue_depth = self._enqueue(entry.path, depth + 1)
                                 with self.lock:
-                                    self.queue.append((entry.path, depth + 1))
+                                    self.dashboard.stats['queue_depth'] = queue_depth
                                 self.db.add_folder(entry.path, depth + 1)
                     except PermissionError:
-                        pass
+                        self.db.log_error(entry.path, "Access Denied")
+                        with self.lock:
+                            self.dashboard.stats['errors'] += 1
+                            self.total_errors += 1
+                    except OSError as e:
+                        self.db.log_error(entry.path, str(e))
+                        with self.lock:
+                            self.dashboard.stats['errors'] += 1
+                            self.total_errors += 1
                 
                 self.db.update_folder_stats(path, file_count)
                 
@@ -226,14 +256,14 @@ class Engine:
             with self.lock:
                 self.dashboard.stats['errors'] += 1
                 self.total_errors += 1
-                self.total_errors += 1
 
     def save_state(self):
         """Manual state save triggered by user"""
         self.db.commit()
-        self.logger.info(f"State saved manually: {self.total_scanned} folders, {len(self.queue)} pending")
+        pending = self._queue_size()
+        self.logger.info(f"State saved manually: {self.total_scanned} folders, {pending} pending")
         with self.lock:
-            self.dashboard.set_status(f"SAVED ({len(self.queue)} pending)")
+            self.dashboard.set_status(f"SAVED ({pending} pending)")
         time.sleep(1)  # Brief pause to show message
 
     def _process_cleanup(self):

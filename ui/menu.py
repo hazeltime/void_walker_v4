@@ -36,7 +36,8 @@ class Menu:
                 with open(self.config_file, "r") as f:
                     saved = json.load(f)
                     defaults.update(saved)
-            except: 
+            except (json.JSONDecodeError, IOError, KeyError):
+                # Ignore corrupted/unreadable config, use defaults
                 pass
         
         return defaults
@@ -320,7 +321,7 @@ class Menu:
                 if workers < 0 or workers > 32:
                     print("   \033[91m[!] Using auto (0)\033[0m")
                     workers = 0
-            except:
+            except ValueError:
                 workers = 0
             self.defaults["workers"] = workers
 
@@ -334,7 +335,7 @@ class Menu:
             try:
                 min_depth = int(min_depth_input)
                 if min_depth < 0: min_depth = 0
-            except:
+            except ValueError:
                 min_depth = 0
             self.defaults["min_depth"] = min_depth
             
@@ -342,7 +343,7 @@ class Menu:
             try:
                 max_depth = int(max_depth_input)
                 if max_depth < 1: max_depth = 10000
-            except:
+            except ValueError:
                 max_depth = 10000
             self.defaults["max_depth"] = max_depth
 
@@ -389,7 +390,7 @@ class Menu:
                                     if pattern not in exclude_paths:
                                         exclude_paths.append(pattern)
                             print(f"   \033[92m[✓] Added {len(selected_indices)} folder(s) to exclusions\033[0m")
-                        except:
+                        except (ValueError, IndexError):
                             print("   \033[91m[!] Invalid selection, skipping\033[0m")
                 
                 time.sleep(1)
@@ -511,7 +512,7 @@ class Menu:
         import shutil
         try:
             cols = shutil.get_terminal_size().columns
-        except:
+        except OSError:
             cols = 80
         
         sep = "="*min(70, cols)
@@ -540,7 +541,7 @@ class Menu:
         cmd = [sys.executable, "main.py", "--show-cache"]
         try:
             subprocess.run(cmd)
-        except:
+        except (subprocess.SubprocessError, OSError):
             pass
         input("\nPress Enter to continue...")
 
