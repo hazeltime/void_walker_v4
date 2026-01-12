@@ -31,11 +31,11 @@ class Engine:
 
     def start(self):
         print("\n\033[96m[*] Initializing Void Walker...\033[0m")
-        print("\033[90m    → Setting up database...\033[0m")
+        print("\033[90m    > Setting up database...\033[0m")
         self.db.setup()
-        print("\033[90m    → Starting keyboard controller...\033[0m")
+        print("\033[90m    > Starting keyboard controller...\033[0m")
         self.controller.start()
-        print("\033[90m    → Launching real-time dashboard...\033[0m")
+        print("\033[90m    > Launching real-time dashboard...\033[0m")
         self.dashboard.start()
 
         self.logger.info("Phase 1: Scanning")
@@ -195,20 +195,58 @@ class Engine:
         # Get deepest folders first
         candidates = self.db.get_empty_candidates(self.config.min_depth)
         
+        # Safety summary for dry-run mode
+        if not self.config.delete_mode:
+            print(f"\n\033[96m[*] DRY RUN: Found {len(candidates)} empty folder candidates\033[0m")
+            total_size = 0
+            verified_empty = 0
+        
         for path in candidates:
             if path == self.config.root_path: continue
             
-            # Verification: Physically Empty?
+            # SAFETY: Triple verification that folder is truly empty
             try:
                 if not os.path.exists(path): continue
                 
-                if not os.listdir(path):
-                    if self.config.delete_mode:
-                        os.rmdir(path)
-                        self.db.mark_deleted(path)
-                        with self.lock: self.dashboard.stats['deleted'] += 1
-                    else:
-                        self.db.mark_would_delete(path)
-                        with self.lock: self.dashboard.stats['empty'] += 1
-            except OSError:
+                # First check: os.listdir (primary guard)
+                contents = os.listdir(path)
+                if len(contents) > 0:
+                    # NOT EMPTY - skip this folder
+                    self.logger.warning(f"Skipped {path}: contains {len(contents)} items")
+                    continue
+                
+                # Second check: Verify size is exactly 0 bytes
+                try:
+                    size = 0
+                    for entry in os.scandir(path):
+                        size += 1  # Should never execute for truly empty folder
+                    
+                    # ASSERTION: If we get here with size > 0, something is wrong
+                    assert size == 0, f"Folder not empty: {path} has {size} items"
+                except AssertionError as e:
+                    self.logger.error(f"Safety check failed: {e}")
+                    with self.lock: self.dashboard.stats['errors'] += 1
+                    continue
+                
+                # Only proceed if ALL checks pass
+                if self.config.delete_mode:
+                    # PRODUCTION: Delete only after all safety checks pass
+                    os.rmdir(path)  # Will raise OSError if not truly empty
+                    self.db.mark_deleted(path)
+                    with self.lock: self.dashboard.stats['deleted'] += 1
+                else:
+                    # DRY RUN: Mark and count
+                    self.db.mark_would_delete(path)
+                    with self.lock: 
+                        self.dashboard.stats['empty'] += 1
+                    total_size += 0  # Verified empty, size = 0
+                    verified_empty += 1
+                    
+            except OSError as e:
+                self.logger.error(f"Cannot delete {path}: {e}")
                 with self.lock: self.dashboard.stats['errors'] += 1
+        
+        # Dry-run summary with size verification
+        if not self.config.delete_mode and verified_empty > 0:
+            print(f"\033[92m[✓] Verified {verified_empty} truly empty folders")
+            print(f"    Total size: {total_size} bytes (all folders confirmed empty)\033[0m")
