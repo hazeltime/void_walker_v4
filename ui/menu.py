@@ -569,7 +569,13 @@ class Menu:
     def launch_engine(self, path, mode, disk, strategy, workers, min_depth, max_depth, 
                      exclude_paths, exclude_names, include_names):
         """Launch engine with all parameters"""
-        cmd = [sys.executable, "main.py", path]
+        # Detect if running from compiled exe or Python script
+        if getattr(sys, 'frozen', False):
+            # Running from PyInstaller exe - sys.executable is the exe itself
+            cmd = [sys.executable, path]
+        else:
+            # Running from Python - need to call main.py
+            cmd = [sys.executable, "main.py", path]
         
         # Mode
         if mode == 'd': 
