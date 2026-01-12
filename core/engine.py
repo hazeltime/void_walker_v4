@@ -42,13 +42,16 @@ class Engine:
         self.dashboard.set_phase("SCANNING")
         
         if not self.config.resume_mode:
-            print(f"\033[92m[OK] Ready! Starting scan from: {self.config.root_path}\033[0m\n")
+            print(f"\033[92m[OK] Ready! Starting scan from: {self.config.root_path}\033[0m", flush=True)
+            print(f"[*] Starting {self.config.workers} workers...", flush=True)
+            print("")
             self.queue.append((self.config.root_path, 0))
             self.db.add_folder(self.config.root_path, 0)
         else:
-            print("\033[93m[*] Loading resume state from cache...\033[0m")
+            print("\033[93m[*] Loading resume state from cache...\033[0m", flush=True)
             self._load_resume_state()
-            print(f"\033[92m[OK] Resuming with {len(self.queue)} pending folders\033[0m\n")
+            print(f"\033[92m[OK] Resuming with {len(self.queue)} pending folders\033[0m", flush=True)
+            print("")
 
         self._process_queue()
 
@@ -76,6 +79,7 @@ class Engine:
         """Concurrent queue processing with ThreadPoolExecutor"""
         self.scan_start_time = time.time()
         futures = []
+        items_processed = 0
         
         with ThreadPoolExecutor(max_workers=self.config.workers) as executor:
             self.executor = executor
@@ -107,6 +111,7 @@ class Engine:
                     done = [f for f in futures if f.done()]
                     for future in done:
                         futures.remove(future)
+                        items_processed += 1
                         try:
                             future.result()  # Raises exception if worker failed
                         except Exception as e:
@@ -117,6 +122,8 @@ class Engine:
                         self.db.commit()
                         self.last_commit_time = time.time()
                         self.logger.info(f"Progress saved: {self.total_scanned} folders scanned")
+                        # Show progress to console every commit interval
+                        print(f"[*] Progress: {self.total_scanned} folders scanned, {self.total_empty} empty found...", flush=True)
                 
                 # Check if we're done
                 if not self.queue and not futures:
