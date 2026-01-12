@@ -84,8 +84,6 @@ class Engine:
         futures = []
         items_processed = 0
         
-        print(f"[DEBUG] Queue size at start: {len(self.queue)}", flush=True)
-        
         with ThreadPoolExecutor(max_workers=self.config.workers) as executor:
             self.executor = executor
             
@@ -132,7 +130,6 @@ class Engine:
                 
                 # Check if we're done
                 if not self.queue and not futures:
-                    print(f"[DEBUG] Scan complete: {self.total_scanned} folders scanned, queue empty", flush=True)
                     break
                 
                 time.sleep(0.01)  # Small sleep to prevent busy-wait
@@ -147,9 +144,10 @@ class Engine:
             try:
                 st = os.lstat(path)
                 if stat.S_ISLNK(st.st_mode) or (os.name == 'nt' and hasattr(stat, 'S_ISDIR') and (st.st_mode & stat.S_IFMT) == stat.S_IFDIR and (st.st_mode & 0o170000) == 0o120000):
+                    self.logger.debug(f"Skipping symlink/junction: {path}")
                     return
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"Error checking symlink status for {path}: {e}")
 
             with self.lock:
                 self.dashboard.update_current(path)
