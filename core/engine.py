@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -36,6 +37,11 @@ class Engine:
         print("\n\033[96m[*] Initializing Void Walker...\033[0m")
         print("\033[90m    > Setting up database...\033[0m")
         self.db.setup()
+        
+        # Save config for resume functionality (only if not resuming)
+        if not self.config.resume_mode:
+            self.config.save_to_db(self.db)
+        
         print("\033[90m    > Starting keyboard controller...\033[0m")
         self.controller.start()
         print("\033[90m    > Launching real-time dashboard...\033[0m")
@@ -57,13 +63,23 @@ class Engine:
             print("")
 
         self._process_queue()
+        
+        # Stop dashboard FIRST to prevent it from clearing our messages
+        self.dashboard.stop()
+        time.sleep(0.3)  # Give dashboard time to clean up
+        
+        # Scan complete - show summary after dashboard stops
+        print(f"\n\033[92m[✓] Scan Complete!\033[0m", flush=True)
+        print(f"    Folders scanned: {self.total_scanned}", flush=True)
+        print(f"    Empty found: {self.total_empty}", flush=True)
+        print(f"    Errors: {self.total_errors}\n", flush=True)
 
-        self.logger.info("Phase 2: Cleaning")
-        self.dashboard.set_phase("CLEANING")
+        self.logger.info("Phase 2: Cleanup")
+        print("\033[96m[*] Phase 2: Analyzing empty folders...\033[0m", flush=True)
         self._process_cleanup()
         
+        print("\033[92m[✓] All phases complete\033[0m\n", flush=True)
         self.controller.stop()
-        self.dashboard.stop()
 
     def _load_resume_state(self):
         pending = self.db.get_pending()
@@ -134,9 +150,22 @@ class Engine:
                 
                 time.sleep(0.01)  # Small sleep to prevent busy-wait
             
+            # Shut down executor and wait for all workers to complete
+            executor.shutdown(wait=True)
+            
             # Final commit
             self.db.commit()
             self.executor = None
+        
+        # Show scan completion summary
+        print(f"\n\033[92m[✓] Scan Complete!\033[0m")
+        print(f"    Scanned: {self.total_scanned} folders")
+        print(f"    Empty: {self.total_empty} folders")
+        print(f"    Errors: {self.total_errors}\n")
+        
+        # Mark session as completed
+        self.db.mark_completed()
+        self.logger.info(f"Session completed successfully")
 
     def _scan_folder(self, path, depth):
         try:

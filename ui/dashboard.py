@@ -33,8 +33,8 @@ class Dashboard:
     def stop(self):
         self.active = False
         if hasattr(self, 'thread'):
-            self.thread.join(timeout=1.0)
-
+            self.thread.join(timeout=1.0)        # Clear dashboard area and move cursor down
+        print("\n" * 5, end="", flush=True)
     def update_current(self, path):
         with self.lock:
             self.current_path = path

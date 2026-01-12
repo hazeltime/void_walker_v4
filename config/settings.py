@@ -12,6 +12,41 @@ class Config:
         if args.resume and args.path:
             raise ValueError("Cannot specify path with --resume flag. Path is loaded from resume state.")
         
+        # Handle resume mode - load from database
+        if args.resume:
+            from data.database import Database
+            last_session = Database.get_last_incomplete_session("void_walker_history.db")
+            
+            if not last_session:
+                raise ValueError("No incomplete session found to resume")
+            
+            print(f"\033[93m[*] Resuming session: {last_session['session_id']}\033[0m")
+            print(f"    Path: {last_session['root_path']}")
+            print(f"    Started: {last_session['timestamp']}\n")
+            
+            # Use the previous session ID and load its config
+            self.session_id = last_session['session_id']
+            self.root_path = last_session['root_path']
+            
+            # Load saved config values
+            saved = last_session['config']
+            self.delete_mode = saved.get('delete_mode', args.delete)
+            self.min_depth = saved.get('min_depth', args.min_depth)
+            self.max_depth = saved.get('max_depth', args.max_depth)
+            self.exclude_paths = saved.get('exclude_paths', args.exclude_path)
+            self.exclude_names = saved.get('exclude_names', args.exclude_name + [".git", "$RECYCLE.BIN", "System Volume Information"])
+            self.include_names = saved.get('include_names', args.include_name)
+            self.disk_type = saved.get('disk_type', 'auto')
+            self.strategy = saved.get('strategy', 'BFS')
+            self.workers = saved.get('workers', 16)
+            
+            # Don't create new session, we're resuming
+            self.timestamp = last_session['timestamp']
+            self.db_path = "void_walker_history.db"
+            self.resume_mode = True
+            return
+        
+        # Normal mode - create new session
         # Normalize path: handle drive letters, relative paths, etc.
         if args.path:
             path = args.path.strip()
@@ -89,4 +124,19 @@ class Config:
                 return "ssd"
         
         # Safe default for auto-detect failure
-        return "hdd" 
+        return "hdd"
+
+    def save_to_db(self, db):
+        """Save current configuration to database for resume functionality"""
+        config_dict = {
+            'delete_mode': self.delete_mode,
+            'min_depth': self.min_depth,
+            'max_depth': self.max_depth,
+            'exclude_paths': self.exclude_paths,
+            'exclude_names': self.exclude_names,
+            'include_names': self.include_names,
+            'disk_type': self.disk_type,
+            'strategy': self.strategy,
+            'workers': self.workers
+        }
+        db.save_config(config_dict, self.root_path) 

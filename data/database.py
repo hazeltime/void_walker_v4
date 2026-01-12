@@ -16,7 +16,9 @@ class Database:
             CREATE TABLE IF NOT EXISTS sessions (
                 id TEXT PRIMARY KEY, 
                 timestamp TEXT, 
-                config TEXT
+                config TEXT,
+                root_path TEXT,
+                completed INTEGER DEFAULT 0
             )
         """)
         
@@ -85,6 +87,48 @@ class Database:
     def get_errors(self):
         self.cursor.execute("SELECT path, error_msg FROM folders WHERE status='ERROR' AND session_id=?", (self.session_id,))
         return self.cursor.fetchall()
+
+    def save_config(self, config_dict, root_path):
+        """Save session configuration for resume functionality"""
+        self.cursor.execute(
+            "UPDATE sessions SET config=?, root_path=? WHERE id=?",
+            (json.dumps(config_dict), root_path, self.session_id)
+        )
+        self.conn.commit()
+
+    def mark_completed(self):
+        """Mark session as completed"""
+        self.cursor.execute(
+            "UPDATE sessions SET completed=1 WHERE id=?",
+            (self.session_id,)
+        )
+        self.conn.commit()
+
+    @staticmethod
+    def get_last_incomplete_session(db_path):
+        """Get the most recent incomplete session for resume"""
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, config, root_path, timestamp 
+            FROM sessions 
+            WHERE completed=0 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+        """)
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            session_id, config_json, root_path, timestamp = result
+            config = json.loads(config_json) if config_json else {}
+            return {
+                'session_id': session_id,
+                'config': config,
+                'root_path': root_path,
+                'timestamp': timestamp
+            }
+        return None
 
     def commit(self):
         self.conn.commit()

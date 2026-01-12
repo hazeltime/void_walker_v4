@@ -101,7 +101,7 @@ def main():
     
     # Filters & Depth
     parser.add_argument("--min-depth", type=int, default=0, help="Minimum depth to start deleting")
-    parser.add_argument("--max-depth", type=int, default=100, help="Maximum depth to traverse")
+    parser.add_argument("--max-depth", type=int, default=10000, help="Maximum depth to traverse (default: 10,000)")
     parser.add_argument("--exclude-path", nargs='*', default=[], help="Glob patterns for full paths to exclude (e.g. *System32*)")
     parser.add_argument("--exclude-name", nargs='*', default=[], help="Glob patterns for folder names to exclude (e.g. .git node_modules)")
     parser.add_argument("--include-name", nargs='*', default=[], help="Strictly include ONLY these folder names")
@@ -137,6 +137,10 @@ def main():
 
         # 5. Reporting
         Reporter(config, engine.db).show_summary()
+        
+        # Final completion marker
+        print("\n\033[92m[✓] All operations completed successfully\033[0m", flush=True)
+        print("\n" + "-"*70, flush=True)
 
     except KeyboardInterrupt:
         print("\n[!] User Force Exit")

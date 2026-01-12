@@ -23,7 +23,7 @@ class Menu:
             "strategy": "auto",
             "workers": 0,
             "min_depth": 0,
-            "max_depth": 100,
+            "max_depth": 10000,
             "exclude_paths": [],
             "exclude_names": [],
             "include_names": [],
@@ -289,8 +289,8 @@ class Menu:
 
             # 2. Mode
             print("\n\033[93m2. OPERATION MODE\033[0m")
-            print("   [D] Delete Mode : ACTUALLY REMOVES FILES")
-            print("   [T] Dry Run     : Simulation only (safe)")
+            print("   [D] Delete Mode : ACTUALLY REMOVES EMPTY FOLDERS ONLY")
+            print("   [T] Dry Run     : Simulation only (safe, no deletion)")
             mode = self.get_input("   Choice", "mode", ['d', 't'])
             self.defaults["mode"] = mode
 
@@ -327,7 +327,7 @@ class Menu:
             # 6. Depth Limits
             print("\n\033[93m6. DEPTH LIMITS\033[0m")
             print("   Min Depth: Only delete folders at this depth or deeper")
-            print("   Max Depth: Stop scanning beyond this depth")
+            print("   Max Depth: Stop scanning beyond this depth (default: 10,000)")
             print("   Example: min=2 protects C:\\Program Files\\<folder>")
             
             min_depth_input = self.get_input("   Min Depth", "min_depth")
@@ -341,9 +341,9 @@ class Menu:
             max_depth_input = self.get_input("   Max Depth", "max_depth")
             try:
                 max_depth = int(max_depth_input)
-                if max_depth < 1: max_depth = 100
+                if max_depth < 1: max_depth = 10000
             except:
-                max_depth = 100
+                max_depth = 10000
             self.defaults["max_depth"] = max_depth
 
             # 7. Windows System Folders Quick Exclusions
@@ -480,7 +480,7 @@ class Menu:
             strategy = self.defaults.get("strategy", "auto")
             workers = self.defaults.get("workers", 0)
             min_depth = self.defaults.get("min_depth", 0)
-            max_depth = self.defaults.get("max_depth", 100)
+            max_depth = self.defaults.get("max_depth", 10000)
             exclude_paths = self.defaults.get("exclude_paths", [])
             exclude_names = self.defaults.get("exclude_names", [])
             include_names = self.defaults.get("include_names", [])
@@ -613,7 +613,7 @@ class Menu:
         # Depth
         if min_depth > 0:
             cmd.extend(["--min-depth", str(min_depth)])
-        if max_depth != 100:
+        if max_depth != 10000:
             cmd.extend(["--max-depth", str(max_depth)])
         
         # Filters
@@ -631,9 +631,20 @@ class Menu:
         print(f"\033[90m[i] Interactive Controls Enabled: Press 'H' for help\033[0m\n")
         
         try:
-            subprocess.run(cmd)
+            # Use unbuffered mode for immediate output visibility
+            if getattr(sys, 'frozen', False):
+                subprocess.run(cmd)
+            else:
+                # Add -u flag for unbuffered output when running via Python
+                cmd.insert(1, '-u')
+                subprocess.run(cmd)
         except KeyboardInterrupt:
             pass
+        
+        # Explicit completion marker
+        print("\n" + "="*70)
+        print("\033[92m[✓] Engine execution completed\033[0m")
+        print("="*70)
 
 if __name__ == "__main__":
     import time
