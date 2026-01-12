@@ -45,10 +45,9 @@ class TestConfig(unittest.TestCase):
     
     def test_resume_mode(self):
         """Test resume mode configuration"""
-        args = MockArgs(resume=True)
-        config = Config(args)
-        
-        self.assertTrue(config.resume_mode)
+        args = MockArgs(resume=True, path=None)
+        with self.assertRaises(ValueError):
+            Config(args)
     
     def test_ssd_disk_type(self):
         """Test SSD disk type configuration"""

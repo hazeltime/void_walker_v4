@@ -2,6 +2,7 @@ import os
 import time
 import platform
 import subprocess
+import sys
 from datetime import datetime
 
 class Config:
@@ -139,6 +140,11 @@ class Config:
                 print("\033[90m[i] Disk detection timeout, defaulting to HDD\033[0m")
             except (FileNotFoundError, OSError) as e:
                 print(f"\033[90m[i] PowerShell unavailable: {e}, defaulting to HDD\033[0m")
+            except Exception as e:
+                try:
+                    print(f"[!] Disk detection failed: {e}", file=sys.stderr)
+                except Exception:
+                    pass
             
             # Heuristic: C: drive often SSD in modern systems
             if drive_letter.lower() == 'c':

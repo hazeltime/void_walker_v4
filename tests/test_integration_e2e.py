@@ -130,6 +130,7 @@ class TestEndToEndDryRun(unittest.TestCase):
         self.assertEqual(len(deleted), 0, f"Dry run deleted folders: {deleted}")
         
         # CRITICAL: Verify folders with content are NEVER marked for deletion
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT path, file_count FROM folders WHERE status='WOULD_DELETE'")
         would_delete = cursor.fetchall()

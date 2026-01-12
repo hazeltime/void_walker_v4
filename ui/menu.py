@@ -36,9 +36,8 @@ class Menu:
                 with open(self.config_file, "r") as f:
                     saved = json.load(f)
                     defaults.update(saved)
-            except (json.JSONDecodeError, IOError, KeyError):
-                # Ignore corrupted/unreadable config, use defaults
-                pass
+            except (json.JSONDecodeError, IOError, KeyError) as e:
+                print(f"[!] Failed to load {self.config_file}: {e}. Using defaults.", file=sys.stderr)
         
         return defaults
 
@@ -540,9 +539,11 @@ class Menu:
         """Display cache status"""
         cmd = [sys.executable, "main.py", "--show-cache"]
         try:
-            subprocess.run(cmd)
-        except (subprocess.SubprocessError, OSError):
-            pass
+            result = subprocess.run(cmd)
+            if result.returncode != 0:
+                print(f"[!] Cache command failed with exit code {result.returncode}", file=sys.stderr)
+        except (subprocess.SubprocessError, OSError) as e:
+            print(f"[!] Failed to show cache: {e}", file=sys.stderr)
         input("\nPress Enter to continue...")
 
     def resume_session(self):
@@ -567,9 +568,13 @@ class Menu:
             cmd.append("--delete")
         
         try:
-            subprocess.run(cmd)
+            result = subprocess.run(cmd)
+            if result.returncode != 0:
+                print(f"[!] Resume failed with exit code {result.returncode}", file=sys.stderr)
         except KeyboardInterrupt:
             pass
+        except (subprocess.SubprocessError, OSError) as e:
+            print(f"[!] Resume failed: {e}", file=sys.stderr)
         
         print("\n" + "-"*70)
         input("Press Enter to return to Main Menu...")
@@ -634,13 +639,17 @@ class Menu:
         try:
             # Use unbuffered mode for immediate output visibility
             if getattr(sys, 'frozen', False):
-                subprocess.run(cmd)
+                result = subprocess.run(cmd)
             else:
                 # Add -u flag for unbuffered output when running via Python
                 cmd.insert(1, '-u')
-                subprocess.run(cmd)
+                result = subprocess.run(cmd)
+            if result.returncode != 0:
+                print(f"[!] Engine exited with code {result.returncode}", file=sys.stderr)
         except KeyboardInterrupt:
             pass
+        except (subprocess.SubprocessError, OSError) as e:
+            print(f"[!] Engine launch failed: {e}", file=sys.stderr)
         
         # Explicit completion marker
         print("\n" + "="*70)
@@ -650,4 +659,3 @@ class Menu:
 if __name__ == "__main__":
     import time
     Menu().main_loop()
-

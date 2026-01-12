@@ -65,21 +65,22 @@ class Engine:
 
         self._process_queue()
         
-        # Stop dashboard FIRST to prevent it from clearing our messages
-        self.dashboard.stop()
-        time.sleep(0.3)  # Give dashboard time to clean up
-        
-        # Scan complete - show summary after dashboard stops
-        print(f"\n\033[92m[✓] Scan Complete!\033[0m", flush=True)
+        # Scan complete - show summary but keep dashboard for cleanup phase
+        print(f"\n\033[92m[OK] Scan Complete!\033[0m", flush=True)
         print(f"    Folders scanned: {self.total_scanned}", flush=True)
         print(f"    Empty found: {self.total_empty}", flush=True)
         print(f"    Errors: {self.total_errors}\n", flush=True)
 
         self.logger.info("Phase 2: Cleanup")
         print("\033[96m[*] Phase 2: Analyzing empty folders...\033[0m", flush=True)
+        self.dashboard.set_phase("CLEANUP")
         self._process_cleanup()
         
-        print("\033[92m[✓] All phases complete\033[0m\n", flush=True)
+        print("\033[92m[OK] All phases complete\033[0m\n", flush=True)
+        
+        # Stop dashboard AFTER all work is done
+        self.dashboard.stop()
+        time.sleep(0.3)  # Give dashboard time to clean up
         self.controller.stop()
 
     def _load_resume_state(self):
@@ -168,6 +169,10 @@ class Engine:
                 if self._queue_size() == 0 and not futures:
                     break
                 
+                # Progress update every 50 items to show activity
+                if items_processed > 0 and items_processed % 50 == 0:
+                    print(f"\r[*] Progress: {self.total_scanned} folders | {self.total_empty} empty | Queue: {self._queue_size()}", end='', flush=True)
+                
                 time.sleep(0.01)  # Small sleep to prevent busy-wait
             
             # Shut down executor and wait for all workers to complete
@@ -178,7 +183,7 @@ class Engine:
             self.executor = None
         
         # Show scan completion summary
-        print(f"\n\033[92m[✓] Scan Complete!\033[0m")
+        print(f"\n\033[92m[OK] Scan Complete!\033[0m")
         print(f"    Scanned: {self.total_scanned} folders")
         print(f"    Empty: {self.total_empty} folders")
         print(f"    Errors: {self.total_errors}\n")
@@ -204,7 +209,7 @@ class Engine:
                 self.dashboard.stats['queue_depth'] = queue_depth
 
             with os.scandir(path) as it:
-                file_count = 0
+                entry_count = 0
                 
                 for entry in it:
                     try:
@@ -212,8 +217,9 @@ class Engine:
                             continue
                             
                         if entry.is_file():
-                            file_count += 1
+                            entry_count += 1
                         elif entry.is_dir():
+                            entry_count += 1
                             if not self._is_filtered(entry.path, entry.name, depth + 1):
                                 queue_depth = self._enqueue(entry.path, depth + 1)
                                 with self.lock:
@@ -230,10 +236,10 @@ class Engine:
                             self.dashboard.stats['errors'] += 1
                             self.total_errors += 1
                 
-                self.db.update_folder_stats(path, file_count)
+                self.db.update_folder_stats(path, entry_count)
                 
                 # Track if this folder is empty (no files, no folders)
-                if file_count == 0 and not any(True for _ in os.scandir(path)):
+                if entry_count == 0:
                     with self.lock:
                         self.total_empty += 1
                         self.dashboard.stats['empty'] = self.total_empty
@@ -277,9 +283,14 @@ class Engine:
         # Safety summary for dry-run mode
         if not self.config.delete_mode:
             print(f"\n\033[96m[*] DRY RUN: Found {len(candidates)} empty folder candidates\033[0m")
+            print(f"\033[90m    Verifying each folder is truly empty...\033[0m")
             total_size = 0
             verified_empty = 0
+        else:
+            print(f"\n\033[93m[!] DELETE MODE: Removing {len(candidates)} empty folder candidates\033[0m")
+            print(f"\033[90m    Each folder verified with triple safety checks...\033[0m")
         
+        processed = 0
         for path in candidates:
             if path == self.config.root_path: continue
             
@@ -315,6 +326,9 @@ class Engine:
                     with self.lock: 
                         self.dashboard.stats['deleted'] += 1
                         self.total_deleted += 1
+                    processed += 1
+                    if processed % 10 == 0:
+                        print(f"\r[*] Deleted: {processed}/{len(candidates)} empty folders", end='', flush=True)
                 else:
                     # DRY RUN: Mark and count
                     self.db.mark_would_delete(path)
@@ -323,12 +337,24 @@ class Engine:
                         self.total_deleted += 1
                     total_size += 0  # Verified empty, size = 0
                     verified_empty += 1
+                    processed += 1
+                    if processed % 10 == 0:
+                        print(f"\r[*] Verified: {verified_empty}/{len(candidates)} empty folders", end='', flush=True)
                     
             except OSError as e:
                 self.logger.error(f"Cannot delete {path}: {e}")
                 with self.lock: self.dashboard.stats['errors'] += 1
         
-        # Dry-run summary with size verification
-        if not self.config.delete_mode and verified_empty > 0:
-            print(f"\033[92m[OK] Verified {verified_empty} truly empty folders")
-            print(f"    Total size: {total_size} bytes (all folders confirmed empty)\033[0m")
+        # Persist delete/would-delete statuses
+        self.db.commit()
+        
+        # Final summary
+        print()  # New line after progress
+        if self.config.delete_mode:
+            print(f"\033[92m[✓] Successfully deleted {self.total_deleted} empty folders\033[0m")
+            print(f"\033[90m    All folders verified empty before deletion\033[0m")
+        else:
+            # Dry-run summary with size verification
+            if verified_empty > 0:
+                print(f"\033[92m[OK] Verified {verified_empty} truly empty folders")
+                print(f"    Total size: {total_size} bytes (all folders confirmed empty)\033[0m")
