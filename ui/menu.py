@@ -347,6 +347,7 @@ class Menu:
             self.defaults["max_depth"] = max_depth
 
             # 7. Windows System Folders Quick Exclusions
+            exclude_paths = []  # Initialize exclude_paths
             if os.name == 'nt':
                 print("\n\033[93m7. WINDOWS SYSTEM FOLDERS (Quick Exclusions)\033[0m")
                 print("   Select common folders to automatically exclude:")
