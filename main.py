@@ -91,6 +91,7 @@ def main():
     
     # Hardware Config
     parser.add_argument("--disk", choices=["ssd", "hdd", "auto"], default="auto", help="Optimize strategy for disk type.\nSSD = BFS/High Concurrency\nHDD = DFS/Low Concurrency")
+    parser.add_argument("--strategy", choices=["bfs", "dfs", "auto"], default="auto", help="Scan strategy.\nBFS = Breadth-First (SSD)\nDFS = Depth-First (HDD)\nAuto = Match disk type")
     parser.add_argument("--workers", type=int, default=0, help="Manual thread count override")
     
     # Filters & Depth

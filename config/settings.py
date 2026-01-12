@@ -25,7 +25,12 @@ class Config:
 
         # Hardware Strategy
         self.disk_type = self._detect_disk(args.disk)
-        self.strategy = "BFS" if self.disk_type == "ssd" else "DFS"
+        
+        # Scan Strategy - explicit or auto-derived
+        if hasattr(args, 'strategy') and args.strategy and args.strategy != "auto":
+            self.strategy = args.strategy.upper()
+        else:
+            self.strategy = "BFS" if self.disk_type == "ssd" else "DFS"
         
         # Concurrency Tuning
         if args.workers > 0:
@@ -39,7 +44,7 @@ class Config:
         if user_choice != "auto":
             return user_choice
         
-        if not self.root_path:
+        if not self.root_path or not os.path.exists(self.root_path):
             return "hdd"  # Safe default
         
         # Extract drive letter (Windows specific)
@@ -53,7 +58,7 @@ class Config:
                     ["powershell", "-NoProfile", "-Command", ps_cmd],
                     capture_output=True,
                     text=True,
-                    timeout=5
+                    timeout=2  # Reduced timeout for faster tests
                 )
                 
                 if result.returncode == 0:

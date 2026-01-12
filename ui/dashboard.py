@@ -50,44 +50,57 @@ class Dashboard:
     def _loop(self):
         spin = ["|", "/", "-", "\\"]
         i = 0
+        first_run = True
+        
         while self.active:
-            cols = shutil.get_terminal_size().columns
+            try:
+                cols = shutil.get_terminal_size().columns
+            except:
+                cols = 120
             
             s = spin[i % 4]
-            path = self.current_path
-            max_path_len = max(40, cols - 80)
-            if len(path) > max_path_len:
-                path = "..." + path[-(max_path_len-3):]
             
-            # Calculate runtime and ETA
-            elapsed = time.time() - self.start_time
-            elapsed_str = str(timedelta(seconds=int(elapsed)))
-            
-            # Build status line with metrics
             with self.lock:
+                path = self.current_path
                 rate = self.stats.get('scan_rate', 0)
                 scanned = self.stats.get('scanned', 0)
                 errors = self.stats.get('errors', 0)
                 queue = self.stats.get('queue_depth', 0)
+                empty = self.stats.get('empty', 0)
+                deleted = self.stats.get('deleted', 0)
             
-            # Main status line
-            line1 = f"\r[{s}] {self.phase} | {self.status} | Workers: {self.config.workers}"
+            # Truncate path if too long
+            max_path_len = max(40, cols - 20)
+            if len(path) > max_path_len:
+                path = "..." + path[-(max_path_len-3):]
             
-            # Metrics line
-            line2 = f"\n{path}"
-            line3 = f"\nScanned: {scanned} | Rate: {rate:.1f}/s | Queue: {queue} | Errors: {errors} | Time: {elapsed_str}"
+            # Calculate runtime
+            elapsed = time.time() - self.start_time
+            elapsed_str = str(timedelta(seconds=int(elapsed)))
             
-            # Combine and fit to width
-            full_output = line1 + line2 + line3
+            # Build output lines
+            line1 = f"[{s}] {self.phase} | {self.status} | Workers: {self.config.workers}"
+            line2 = f"{path}"
+            line3 = f"Scanned: {scanned} | Rate: {rate:.1f}/s | Queue: {queue} | Empty: {empty} | Deleted: {deleted} | Errors: {errors} | Time: {elapsed_str}"
+            line4 = "-" * min(60, cols)
             
-            # Move cursor up and clear lines
-            sys.stdout.write(f"\r{' ' * (cols-1)}")
-            sys.stdout.write("\r" + line1[:cols-1])
-            sys.stdout.write(line2[:cols-1])
-            sys.stdout.write(line3[:cols-1])
+            # Clear and rewrite (move cursor up on subsequent runs)
+            if not first_run:
+                # Move cursor up 4 lines and clear
+                sys.stdout.write("\033[4A")  # Move up 4 lines
+                sys.stdout.write("\033[J")   # Clear from cursor to end of screen
+            else:
+                first_run = False
+            
+            # Write all lines
+            sys.stdout.write(line1 + "\n")
+            sys.stdout.write(line2 + "\n")
+            sys.stdout.write(line3 + "\n")
+            sys.stdout.write(line4 + "\n")
             sys.stdout.flush()
             
             i += 1
             time.sleep(0.2)
         
+        # Final newline for clean exit
         sys.stdout.write("\n")

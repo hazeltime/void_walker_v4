@@ -11,7 +11,8 @@ class MockArgs:
         self.path = kwargs.get('path', os.getcwd())
         self.delete = kwargs.get('delete', False)
         self.resume = kwargs.get('resume', False)
-        self.disk = kwargs.get('disk', 'auto')
+        self.disk = kwargs.get('disk', 'hdd')  # Changed default to avoid PowerShell queries in tests
+        self.strategy = kwargs.get('strategy', 'dfs')  # Added strategy parameter
         self.workers = kwargs.get('workers', 0)
         self.min_depth = kwargs.get('min_depth', 0)
         self.max_depth = kwargs.get('max_depth', 100)
@@ -51,7 +52,7 @@ class TestConfig(unittest.TestCase):
     
     def test_ssd_disk_type(self):
         """Test SSD disk type configuration"""
-        args = MockArgs(disk='ssd')
+        args = MockArgs(disk='ssd', strategy='auto')  # Let strategy auto-derive from disk
         config = Config(args)
         
         self.assertEqual(config.disk_type, 'ssd')
@@ -60,7 +61,7 @@ class TestConfig(unittest.TestCase):
     
     def test_hdd_disk_type(self):
         """Test HDD disk type configuration"""
-        args = MockArgs(disk='hdd')
+        args = MockArgs(disk='hdd', strategy='auto')  # Let strategy auto-derive from disk
         config = Config(args)
         
         self.assertEqual(config.disk_type, 'hdd')
