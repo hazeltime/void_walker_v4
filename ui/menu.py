@@ -125,8 +125,8 @@ class Menu:
             sys.exit(0)
         return False
 
-    def get_input(self, prompt, key, valid_options=None):
-        """Dynamic input with colored defaults loaded from JSON."""
+    def get_input(self, prompt, key, valid_options=None, example=""):
+        """Dynamic input with colored defaults, examples, and universal controls."""
         default_val = self.defaults.get(key, "")
         
         # Format default for display
@@ -137,8 +137,12 @@ class Menu:
         else:
             display_default = str(default_val) if default_val else "Not set"
         
+        # Show example if provided
+        if example:
+            print(f"   \033[90m💡 Example: {example}\033[0m")
+        
         # Colorize default value (Bright Yellow + Bold)
-        prompt_str = f"{prompt} [\033[1;93m{display_default}\033[0m]: "
+        prompt_str = f"{prompt} [\033[1;93m{display_default}\033[0m]\n   \033[90m[H]elp | [S]ave | [V]iew Config | [Q]uit\033[0m\n   → "
         
         choice = input(prompt_str).strip()
 
@@ -147,11 +151,21 @@ class Menu:
         
         if choice.lower() in ['q', 'quit', 'exit']:
             self.confirm_quit()
-            return self.get_input(prompt, key, valid_options)
+            return self.get_input(prompt, key, valid_options, example)
         
-        if choice.lower() == 'h' or choice.lower() == 'help':
+        if choice.lower() in ['h', 'help', '?']:
             self.print_help()
-            return self.get_input(prompt, key, valid_options)
+            return self.get_input(prompt, key, valid_options, example)
+        
+        if choice.lower() in ['s', 'save']:
+            self.save_config()
+            print("   \033[92m[✓] Config saved to void_walker_config.json\033[0m")
+            time.sleep(1)
+            return self.get_input(prompt, key, valid_options, example)
+        
+        if choice.lower() in ['v', 'view']:
+            self.show_current_config()
+            return self.get_input(prompt, key, valid_options, example)
 
         if valid_options:
             if choice.lower() in valid_options:
@@ -490,6 +504,31 @@ class Menu:
                 json.dump(self.defaults, f, indent=4)
         except Exception as e:
             print(f"    [!] Save failed: {e}")
+    
+    def show_current_config(self):
+        """Display current configuration during setup"""
+        import shutil
+        try:
+            cols = shutil.get_terminal_size().columns
+        except:
+            cols = 80
+        
+        sep = "="*min(70, cols)
+        print(f"\n\033[96m{sep}\033[0m")
+        print("\033[93m CURRENT CONFIGURATION\033[0m")
+        print(f"\033[96m{sep}\033[0m")
+        
+        for key, value in self.defaults.items():
+            if isinstance(value, list):
+                display_val = ", ".join(value) if value else "None"
+            elif isinstance(value, bool):
+                display_val = "Yes" if value else "No"
+            else:
+                display_val = str(value)
+            print(f"  \033[96m{key:18}\033[0m : {display_val}")
+        
+        print(f"\033[96m{sep}\033[0m\n")
+        input("Press Enter to continue...")
 
     def load_and_apply_config(self):
         """Deprecated - use load_and_run instead"""
