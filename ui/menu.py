@@ -117,10 +117,10 @@ class Menu:
         input("Press Enter to return to menu...")
 
     def confirm_quit(self):
-        """Confirm before quitting"""
+        """Confirm before quitting - defaults to YES"""
         print("\n\033[93m[!] Are you sure you want to quit?\033[0m")
-        choice = input("    [Y] Yes, quit  [N] No, go back: ").strip().lower()
-        if choice in ['y', 'yes']:
+        choice = input("    [\033[1m\033[93mY\033[0m] Yes, quit  [N] No, go back (default: Yes): ").strip().lower()
+        if choice in ['y', 'yes', '']:  # Empty string defaults to Yes
             print("\n\033[90m[i] Goodbye! Thank you for using Void Walker.\033[0m\n")
             sys.exit(0)
         return False
@@ -582,6 +582,15 @@ class Menu:
         elif disk == 'h': 
             cmd.append("hdd")
         else: 
+            cmd.append("auto")
+        
+        # Strategy
+        cmd.append("--strategy")
+        if strategy == 'b':
+            cmd.append("bfs")
+        elif strategy == 'd':
+            cmd.append("dfs")
+        else:
             cmd.append("auto")
         
         # Workers
