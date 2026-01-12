@@ -356,11 +356,11 @@ class Menu:
                 time.sleep(1)
 
             if action == 'c':
-                continue  # Return to main menu
+                return  # Return to main menu
             
             if action == 'q':
                 self.confirm_quit()
-                continue
+                return
 
             # LAUNCH
             self.launch_engine(target_path, mode, disk, strategy, workers, min_depth, max_depth, 
