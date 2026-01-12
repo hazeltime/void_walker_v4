@@ -28,6 +28,9 @@ class Engine:
         self.commit_interval = 10  # seconds
         self.scan_start_time = None
         self.total_scanned = 0
+        self.total_empty = 0
+        self.total_errors = 0
+        self.total_deleted = 0
 
     def start(self):
         print("\n\033[96m[*] Initializing Void Walker...\033[0m")
@@ -81,6 +84,8 @@ class Engine:
         futures = []
         items_processed = 0
         
+        print(f"[DEBUG] Queue size at start: {len(self.queue)}", flush=True)
+        
         with ThreadPoolExecutor(max_workers=self.config.workers) as executor:
             self.executor = executor
             
@@ -127,6 +132,7 @@ class Engine:
                 
                 # Check if we're done
                 if not self.queue and not futures:
+                    print(f"[DEBUG] Scan complete: {self.total_scanned} folders scanned, queue empty", flush=True)
                     break
                 
                 time.sleep(0.01)  # Small sleep to prevent busy-wait
@@ -169,6 +175,12 @@ class Engine:
                 
                 self.db.update_folder_stats(path, file_count)
                 
+                # Track if this folder is empty (no files, no folders)
+                if file_count == 0 and not any(True for _ in os.scandir(path)):
+                    with self.lock:
+                        self.total_empty += 1
+                        self.dashboard.stats['empty'] = self.total_empty
+                
                 with self.lock:
                     self.dashboard.stats['scanned'] += 1
                     self.total_scanned += 1
@@ -181,10 +193,13 @@ class Engine:
             self.db.log_error(path, "Access Denied")
             with self.lock:
                 self.dashboard.stats['errors'] += 1
+                self.total_errors += 1
         except OSError as e:
             self.db.log_error(path, str(e))
             with self.lock:
                 self.dashboard.stats['errors'] += 1
+                self.total_errors += 1
+                self.total_errors += 1
 
     def save_state(self):
         """Manual state save triggered by user"""
@@ -240,12 +255,15 @@ class Engine:
                     # PRODUCTION: Delete only after all safety checks pass
                     os.rmdir(path)  # Will raise OSError if not truly empty
                     self.db.mark_deleted(path)
-                    with self.lock: self.dashboard.stats['deleted'] += 1
+                    with self.lock: 
+                        self.dashboard.stats['deleted'] += 1
+                        self.total_deleted += 1
                 else:
                     # DRY RUN: Mark and count
                     self.db.mark_would_delete(path)
                     with self.lock: 
                         self.dashboard.stats['empty'] += 1
+                        self.total_deleted += 1
                     total_size += 0  # Verified empty, size = 0
                     verified_empty += 1
                     
