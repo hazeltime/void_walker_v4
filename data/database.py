@@ -36,6 +36,11 @@ class Database:
         # Register Session
         self.cursor.execute("INSERT OR IGNORE INTO sessions (id, timestamp) VALUES (?, datetime('now'))", (self.session_id,))
         self.conn.commit()
+        
+        # Count existing sessions for user info
+        self.cursor.execute("SELECT COUNT(*) FROM sessions")
+        total_sessions = self.cursor.fetchone()[0]
+        print(f"\033[90m       Database ready ({total_sessions} total sessions)\033[0m")
 
     def add_folder(self, path, depth):
         try:

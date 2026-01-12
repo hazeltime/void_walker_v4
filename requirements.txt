@@ -1,2 +1,14 @@
-# Standard Library dependencies only.
-# No pip install required.
+# Void Walker v4.1.1 Dependencies
+# Runtime: Standard library only (no pip install needed)
+# Development & Build: Optional tools below
+
+# Testing
+pytest>=7.0.0
+coverage>=7.0.0
+
+# Build Tools
+pyinstaller>=5.0.0
+
+# Optional: Code Quality
+# pylint>=2.15.0
+# black>=22.0.0

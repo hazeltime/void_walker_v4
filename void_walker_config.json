@@ -2,7 +2,7 @@
     "path": "F:\\",
     "mode": "t",
     "disk": "a",
-    "strategy": "b",
+    "strategy": "a",
     "workers": 0,
     "min_depth": 0,
     "max_depth": 100,

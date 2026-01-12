@@ -27,7 +27,8 @@ class Menu:
             "exclude_paths": [],
             "exclude_names": [],
             "include_names": [],
-            "resume": False
+            "resume": False,
+            "windows_exclusions": []
         }
         
         if os.path.exists(self.config_file):
@@ -130,12 +131,14 @@ class Menu:
         
         # Format default for display
         if isinstance(default_val, list):
-            display_default = ", ".join(default_val) if default_val else "none"
+            display_default = ", ".join(default_val) if default_val else "None"
+        elif isinstance(default_val, bool):
+            display_default = "Yes" if default_val else "No"
         else:
-            display_default = str(default_val)
+            display_default = str(default_val) if default_val else "Not set"
         
-        # Colorize default value (Yellow)
-        prompt_str = f"{prompt} [\033[93m{display_default}\033[0m]: "
+        # Colorize default value (Bright Yellow + Bold)
+        prompt_str = f"{prompt} [\033[1;93m{display_default}\033[0m]: "
         
         choice = input(prompt_str).strip()
 
@@ -329,21 +332,70 @@ class Menu:
                 max_depth = 100
             self.defaults["max_depth"] = max_depth
 
-            # 7. Filters
-            print("\n\033[93m7. FILTERS (comma-separated patterns)\033[0m")
-            print("   Examples: *.tmp*, node_modules, .git")
-            
-            exclude_paths = self.get_list_input("   Exclude Paths", "exclude_paths")
-            self.defaults["exclude_paths"] = exclude_paths
-            
-            exclude_names = self.get_list_input("   Exclude Names", "exclude_names")
-            self.defaults["exclude_names"] = exclude_names
-            
-            include_names = self.get_list_input("   Include Names (leave empty for all)", "include_names")
-            self.defaults["include_names"] = include_names
+            # 7. Windows System Folders Quick Exclusions
+            if os.name == 'nt':
+                print("\n\033[93m7. WINDOWS SYSTEM FOLDERS (Quick Exclusions)\033[0m")
+                print("   Select common folders to automatically exclude:")
+                
+                windows_defaults = {
+                    "Windows": "*:\\Windows*",
+                    "Program Files": "*:\\Program Files*",
+                    "Program Files (x86)": "*:\\Program Files (x86)*",
+                    "ProgramData": "*:\\ProgramData*",
+                    "Users": "*:\\Users*",
+                    "$RECYCLE.BIN": "*$RECYCLE.BIN*"
+                }
+                
+                print("\n   \033[96m[A]\033[0m All system folders (recommended)")
+                print("   \033[96m[C]\033[0m Custom selection")
+                print("   \033[96m[N]\033[0m None (skip)")
+                
+                win_choice = input("   Your choice [\033[1;93mA\033[0m]: ").strip().upper()
+                
+                if win_choice == '' or win_choice == 'A':
+                    # Add all Windows exclusions
+                    for folder_name, pattern in windows_defaults.items():
+                        if pattern not in exclude_paths:
+                            exclude_paths.append(pattern)
+                    print(f\"   \033[92m[\u2713] Added {len(windows_defaults)} Windows system folders to exclusions\033[0m\")
+                elif win_choice == 'C':
+                    print(\"\\n   \033[90mEnter folder numbers to exclude (e.g., 1,3,5):\033[0m\")
+                    for idx, (name, pattern) in enumerate(windows_defaults.items(), 1):
+                        print(f\"   \033[96m[{idx}]\033[0m {name:25} ({pattern})\")
+                    
+                    selections = input(\"   Your selections: \").strip()
+                    if selections:
+                        try:
+                            selected_indices = [int(x.strip()) for x in selections.split(',')]
+                            items = list(windows_defaults.items())
+                            for idx in selected_indices:
+                                if 1 <= idx <= len(items):
+                                    pattern = items[idx-1][1]
+                                    if pattern not in exclude_paths:
+                                        exclude_paths.append(pattern)
+                            print(f\"   \033[92m[\u2713] Added {len(selected_indices)} folder(s) to exclusions\033[0m\")
+                        except:
+                            print(\"   \033[91m[!] Invalid selection, skipping\033[0m\")
+                
+                time.sleep(1)
 
-            # 8. Confirm Action
-            print("\n\033[93m8. CONFIRM\033[0m")
+            # 8. Additional Filters
+            print("\n\033[93m8. ADDITIONAL FILTERS (comma-separated patterns)\033[0m")
+            print(\"   Examples: *.tmp*, node_modules, .git\")
+            print(\"   \033[90m(These will be added to any Windows exclusions above)\033[0m\")
+            
+            more_exclude_paths = self.get_list_input(\"   More Exclude Paths\", \"exclude_paths\")
+            exclude_paths.extend(more_exclude_paths)
+            self.defaults[\"exclude_paths\"] = exclude_paths
+            
+            exclude_names = self.get_list_input(\"   Exclude Names\", \"exclude_names\")
+            self.defaults[\"exclude_names\"] = exclude_names
+            
+            include_names = self.get_list_input(\"   Include Names (leave empty for all)\", \"include_names\")
+            self.defaults[\"include_names\"] = include_names
+
+            # 9. Confirm Action
+            print("\n\033[93m9. CONFIRM\033[0m")
             print("   [R] Run Analysis Now")
             print("   [S] Save Config & Run")
             print("   [C] Cancel (return to main menu)")

@@ -50,7 +50,12 @@ def show_cache_status(db_path="void_walker_history.db"):
             """, (session_id,))
             
             stats = cursor.fetchone()
-            total, scanned, pending, errors, deleted, would_delete = stats
+            total = stats[0] or 0
+            scanned = stats[1] or 0
+            pending = stats[2] or 0
+            errors = stats[3] or 0
+            deleted = stats[4] or 0
+            would_delete = stats[5] or 0
             
             # Get root path
             cursor.execute("SELECT path FROM folders WHERE session_id=? ORDER BY depth ASC LIMIT 1", (session_id,))

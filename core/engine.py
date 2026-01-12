@@ -30,18 +30,25 @@ class Engine:
         self.total_scanned = 0
 
     def start(self):
+        print("\n\033[96m[*] Initializing Void Walker...\033[0m")
+        print("\033[90m    → Setting up database...\033[0m")
         self.db.setup()
+        print("\033[90m    → Starting keyboard controller...\033[0m")
         self.controller.start()
+        print("\033[90m    → Launching real-time dashboard...\033[0m")
         self.dashboard.start()
 
         self.logger.info("Phase 1: Scanning")
         self.dashboard.set_phase("SCANNING")
         
         if not self.config.resume_mode:
+            print(f"\033[92m[✓] Ready! Starting scan from: {self.config.root_path}\033[0m\n")
             self.queue.append((self.config.root_path, 0))
             self.db.add_folder(self.config.root_path, 0)
         else:
+            print("\033[93m[*] Loading resume state from cache...\033[0m")
             self._load_resume_state()
+            print(f"\033[92m[✓] Resuming with {len(self.queue)} pending folders\033[0m\n")
 
         self._process_queue()
 
