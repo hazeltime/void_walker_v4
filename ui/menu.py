@@ -48,12 +48,12 @@ class Menu:
         """Display application banner with version and description"""
         self.clear()
         print("\033[96m" + "="*70)
-        print("  ██╗   ██╗ ██████╗ ██╗██╗███╗   ██╗  ██╗    ██╗ █████╗ ██╗     ██╗  ██╗███████╗██████╗ ")
-        print("  ██║   ██║██╔═══██╗██║██║████╗  ██║  ██║    ██║██╔══██╗██║     ██║ ██╔╝██╔════╝██╔══██╗")
-        print("  ██║   ██║██║   ██║██║██║██╔██╗ ██║  ██║ █╗ ██║███████║██║     █████╔╝ █████╗  ██████╔╝")
-        print("  ╚██╗ ██╔╝██║   ██║██║██║██║╚██╗██║  ██║███╗██║██╔══██║██║     ██╔═██╗ ██╔══╝  ██╔══██╗")
-        print("   ╚████╔╝ ╚██████╔╝██║██║██║ ╚████║  ╚███╔███╔╝██║  ██║███████╗██║  ██╗███████╗██║  ██║")
-        print("    ╚═══╝   ╚═════╝ ╚═╝╚═╝╚═╝  ╚═══╝   ╚══╝╚══╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝")
+        print(" __     ______  _____ _____   __          __     _      _  ________ _____  ")
+        print(" \\ \\   / / __ \\|_   _|  __ \\  \\ \\        / /\\ \\  | |    | |/ /  ____|  __ \\ ")
+        print("  \\ \\_/ / |  | | | | | |  | |  \\ \\  /\\  / /  \\ \\_| |    | ' /| |__  | |__) |")
+        print("   \\   /| |  | | | | | |  | |   \\ \\/  \\/ / /\\ \\| |    |  < |  __| |  _  / ")
+        print("    | | | |__| |_| |_| |__| |    \\  /\\  / ____ \\ |____| . \\| |____| | \\ \\ ")
+        print("    |_|  \\____/|_____|_____/      \\/  \\/_/    \\_\\______|_|\\_\\______|_|  \\_\\")
         print("="*70)
         print("  \033[93mVersion 4.1.1\033[0m | Enterprise Empty Folder Detection & Cleanup Tool")
         print("  \033[90mOptimized for SSD/HDD with concurrent scanning & intelligent filtering\033[0m")
@@ -554,7 +554,14 @@ class Menu:
         if confirm and confirm not in ['y', 'yes']:
             return
         
-        cmd = [sys.executable, "main.py", self.defaults.get("path", os.getcwd()), "--resume"]
+        # CRITICAL: Do NOT pass path with --resume - path comes from database!
+        if getattr(sys, 'frozen', False):
+            # Running from exe
+            cmd = [sys.executable, "--resume"]
+        else:
+            # Running from Python
+            cmd = [sys.executable, "main.py", "--resume"]
+        
         if self.defaults.get("mode") == 'd':
             cmd.append("--delete")
         

@@ -7,7 +7,21 @@ from datetime import datetime
 class Config:
     def __init__(self, args):
         self.args = args
-        self.root_path = os.path.abspath(args.path) if args.path else None
+        
+        # CRITICAL: Resume mode should NOT accept a path argument
+        if args.resume and args.path:
+            raise ValueError("Cannot specify path with --resume flag. Path is loaded from resume state.")
+        
+        # Normalize path: handle drive letters, relative paths, etc.
+        if args.path:
+            path = args.path.strip()
+            # Handle drive letter without trailing slash (F: -> F:\\)
+            if len(path) == 2 and path[1] == ':':
+                path = path + '\\\\'
+            self.root_path = os.path.abspath(path)
+        else:
+            self.root_path = None
+        
         self.delete_mode = args.delete
         self.resume_mode = args.resume
         

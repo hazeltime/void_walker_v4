@@ -69,7 +69,7 @@ def show_cache_status(db_path="void_walker_history.db"):
             print(f" Root:    {root_path}")
             print(f" Status:  {scanned}/{total} scanned ({completion:.1f}% complete)")
             if pending > 0:
-                print(f" ⚠ {pending} folders pending (can resume with --resume)")
+                print(f" [!] {pending} folders pending (can resume with --resume)")
             if deleted > 0:
                 print(f" [OK] {deleted} folders deleted")
             if would_delete > 0:
@@ -113,8 +113,12 @@ def main():
         show_cache_status()
         return
 
-    # 2. Interactive Menu (if no path)
-    if not args.path:
+    # 2. Handle resume mode (doesn't need path or menu)
+    if args.resume:
+        # Resume goes directly to execution, no menu
+        pass  # Continue to execution section
+    # 3. Interactive Menu (if no path and not resume)
+    elif not args.path:
         Menu().run_wizard()
         return
 
