@@ -71,9 +71,9 @@ def show_cache_status(db_path="void_walker_history.db"):
             if pending > 0:
                 print(f" ⚠ {pending} folders pending (can resume with --resume)")
             if deleted > 0:
-                print(f" ✓ {deleted} folders deleted")
+                print(f" [OK] {deleted} folders deleted")
             if would_delete > 0:
-                print(f" ✓ {would_delete} empty folders identified (dry run)")
+                print(f" [OK] {would_delete} empty folders identified (dry run)")
             if errors > 0:
                 print(f" ✗ {errors} errors")
             print("-"*70)

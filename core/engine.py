@@ -42,13 +42,13 @@ class Engine:
         self.dashboard.set_phase("SCANNING")
         
         if not self.config.resume_mode:
-            print(f"\033[92m[✓] Ready! Starting scan from: {self.config.root_path}\033[0m\n")
+            print(f"\033[92m[OK] Ready! Starting scan from: {self.config.root_path}\033[0m\n")
             self.queue.append((self.config.root_path, 0))
             self.db.add_folder(self.config.root_path, 0)
         else:
             print("\033[93m[*] Loading resume state from cache...\033[0m")
             self._load_resume_state()
-            print(f"\033[92m[✓] Resuming with {len(self.queue)} pending folders\033[0m\n")
+            print(f"\033[92m[OK] Resuming with {len(self.queue)} pending folders\033[0m\n")
 
         self._process_queue()
 
@@ -248,5 +248,5 @@ class Engine:
         
         # Dry-run summary with size verification
         if not self.config.delete_mode and verified_empty > 0:
-            print(f"\033[92m[✓] Verified {verified_empty} truly empty folders")
+            print(f"\033[92m[OK] Verified {verified_empty} truly empty folders")
             print(f"    Total size: {total_size} bytes (all folders confirmed empty)\033[0m")

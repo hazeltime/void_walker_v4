@@ -159,7 +159,7 @@ class Menu:
         
         if choice.lower() in ['s', 'save']:
             self.save_config()
-            print("   \033[92m[✓] Config saved to void_walker_config.json\033[0m")
+            print("   \033[92m[OK] Config saved to void_walker_config.json\033[0m")
             time.sleep(1)
             return self.get_input(prompt, key, valid_options, example)
         
@@ -365,9 +365,9 @@ class Menu:
                 print("   \033[96m[C]\033[0m Custom selection")
                 print("   \033[96m[N]\033[0m None (skip)")
                 
-                win_choice = input("   Your choice [\033[1;93mA\033[0m]: ").strip().upper()
+                win_choice = input("   Your choice [\033[1;93mN\033[0m]: ").strip().upper()
                 
-                if win_choice == '' or win_choice == 'A':
+                if win_choice == 'A':
                     # Add all Windows exclusions
                     for folder_name, pattern in windows_defaults.items():
                         if pattern not in exclude_paths:
