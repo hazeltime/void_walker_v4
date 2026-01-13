@@ -616,7 +616,7 @@ class Menu:
             # Running from Python
             cmd = [sys.executable, "main.py", "--resume"]
         
-        if self.defaults.get("mode") == 'd':
+        if self.defaults.get("mode") == '2':
             cmd.append("--delete")
         
         try:
