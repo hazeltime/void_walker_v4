@@ -18,9 +18,9 @@ class Menu:
         """Load user configuration with comprehensive defaults"""
         defaults = {
             "path": os.getcwd(),
-            "mode": "t",
-            "disk": "a",
-            "strategy": "auto",
+            "mode": "1",
+            "disk": "1",
+            "strategy": "1",
             "workers": 0,
             "min_depth": 0,
             "max_depth": 10000,
@@ -125,7 +125,7 @@ class Menu:
             sys.exit(0)
         return False
 
-    def get_input(self, prompt, key, valid_options=None, example=""):
+    def get_input(self, prompt, key, valid_options=None, example="", value_map=None):
         """Dynamic input with colored defaults, examples, and universal controls."""
         default_val = self.defaults.get(key, "")
         
@@ -134,6 +134,9 @@ class Menu:
             display_default = ", ".join(default_val) if default_val else "None"
         elif isinstance(default_val, bool):
             display_default = "Yes" if default_val else "No"
+        elif value_map and str(default_val) in value_map:
+            # Show as "number:name" format
+            display_default = f"{default_val}:{value_map[str(default_val)]}"
         else:
             display_default = str(default_val) if default_val else "Not set"
         
@@ -204,26 +207,26 @@ class Menu:
             # Show banner on first screen
             self.print_banner()
             
-            print("\033[92m═══ MAIN MENU ═══\033[0m\n")
+            print("\033[92m=== MAIN MENU ===\033[0m\n")
             print("\033[93mWELCOME!\033[0m This tool scans directories to find and optionally delete")
             print("empty folders. It's optimized for both SSD and HDD with intelligent")
             print("concurrent scanning, depth filtering, and pattern-based exclusions.\n")
             
-            print("\033[96m╔═══ QUICK START ═══════════════════════════════════════════════════╗\033[0m")
-            print("\033[96m║\033[0m  \033[92m[1]\033[0m New Scan         - Configure and run a new folder scan          \033[96m║\033[0m")
-            print("\033[96m║\033[0m  \033[92m[2]\033[0m Load & Run       - Load saved config and execute immediately    \033[96m║\033[0m")
-            print("\033[96m║\033[0m  \033[92m[3]\033[0m Resume Session   - Continue a previously interrupted scan       \033[96m║\033[0m")
-            print("\033[96m╚═══════════════════════════════════════════════════════════════════╝\033[0m\n")
+            print("\033[96m┌─── QUICK START ───────────────────────────────────────────────────┐\033[0m")
+            print("\033[96m│\033[0m  \033[92m[1]\033[0m New Scan         - Configure and run a new folder scan          \033[96m│\033[0m")
+            print("\033[96m│\033[0m  \033[92m[2]\033[0m Load & Run       - Load saved config and execute immediately    \033[96m│\033[0m")
+            print("\033[96m│\033[0m  \033[92m[3]\033[0m Resume Session   - Continue a previously interrupted scan       \033[96m│\033[0m")
+            print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
             
-            print("\033[96m╔═══ INFORMATION ═══════════════════════════════════════════════════╗\033[0m")
-            print("\033[96m║\033[0m  \033[93m[4]\033[0m View Cache       - Show previous scan sessions and statistics    \033[96m║\033[0m")
-            print("\033[96m║\033[0m  \033[93m[5]\033[0m Help             - Comprehensive guide to all options            \033[96m║\033[0m")
-            print("\033[96m║\033[0m  \033[93m[6]\033[0m About            - Application info, version, and features       \033[96m║\033[0m")
-            print("\033[96m╚═══════════════════════════════════════════════════════════════════╝\033[0m\n")
+            print("\033[96m┌─── INFORMATION ───────────────────────────────────────────────────┐\033[0m")
+            print("\033[96m│\033[0m  \033[93m[4]\033[0m View Cache       - Show previous scan sessions and statistics    \033[96m│\033[0m")
+            print("\033[96m│\033[0m  \033[93m[5]\033[0m Help             - Comprehensive guide to all options            \033[96m│\033[0m")
+            print("\033[96m│\033[0m  \033[93m[6]\033[0m About            - Application info, version, and features       \033[96m│\033[0m")
+            print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
             
-            print("\033[96m╔═══ EXIT ══════════════════════════════════════════════════════════╗\033[0m")
-            print("\033[96m║\033[0m  \033[91m[Q]\033[0m Quit             - Exit Void Walker (with confirmation)          \033[96m║\033[0m")
-            print("\033[96m╚═══════════════════════════════════════════════════════════════════╝\033[0m\n")
+            print("\033[96m┌─── EXIT ──────────────────────────────────────────────────────────┐\033[0m")
+            print("\033[96m│\033[0m  \033[91m[Q]\033[0m Quit             - Exit Void Walker (with confirmation)          \033[96m│\033[0m")
+            print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
             
             choice = input("\033[96mYour choice:\033[0m ").strip().lower()
             
@@ -248,28 +251,28 @@ class Menu:
     def show_about(self):
         """Display about information"""
         self.print_header()
-        print("\n\033[96m╔═══ ABOUT VOID WALKER ═════════════════════════════════════════════╗\033[0m")
-        print("\033[96m║\033[0m                                                                   \033[96m║\033[0m")
-        print("\033[96m║\033[0m  \033[93mVersion:\033[0m 4.1.1                                                  \033[96m║\033[0m")
-        print("\033[96m║\033[0m  \033[93mRelease Date:\033[0m January 2026                                     \033[96m║\033[0m")
-        print("\033[96m║\033[0m  \033[93mRepository:\033[0m github.com/hazeltime/void_walker_v4                \033[96m║\033[0m")
-        print("\033[96m║\033[0m                                                                   \033[96m║\033[0m")
-        print("\033[96m║\033[0m  \033[92m⚡ KEY FEATURES:\033[0m                                                \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • Concurrent multi-threaded scanning (up to 32 workers)       \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • Intelligent SSD/HDD detection and optimization              \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • BFS (breadth-first) and DFS (depth-first) strategies       \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • Advanced filtering: patterns, depth limits, exclusions     \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • Resume capability for interrupted scans                     \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • Real-time dashboard with live metrics                       \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • SQLite persistence with session history                     \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • Dry-run mode for safe testing                               \033[96m║\033[0m")
-        print("\033[96m║\033[0m                                                                   \033[96m║\033[0m")
-        print("\033[96m║\033[0m  \033[92m📊 PERFORMANCE:\033[0m                                                \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • SSD: 10-12x faster with 16 threads + BFS                    \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • HDD: 3-4x faster with 4 threads + DFS                       \033[96m║\033[0m")
-        print("\033[96m║\033[0m    • Average scan rate: 200-500 folders/second (SSD)             \033[96m║\033[0m")
-        print("\033[96m║\033[0m                                                                   \033[96m║\033[0m")
-        print("\033[96m╚═══════════════════════════════════════════════════════════════════╝\033[0m\n")
+        print("\n\033[96m┌─── ABOUT VOID WALKER ─────────────────────────────────────────────┐\033[0m")
+        print("\033[96m│\033[0m                                                                   \033[96m│\033[0m")
+        print("\033[96m│\033[0m  \033[93mVersion:\033[0m 4.1.1                                                  \033[96m│\033[0m")
+        print("\033[96m│\033[0m  \033[93mRelease Date:\033[0m January 2026                                     \033[96m│\033[0m")
+        print("\033[96m│\033[0m  \033[93mRepository:\033[0m github.com/hazeltime/void_walker_v4                \033[96m│\033[0m")
+        print("\033[96m│\033[0m                                                                   \033[96m│\033[0m")
+        print("\033[96m│\033[0m  \033[92m⚡ KEY FEATURES:\033[0m                                                \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • Concurrent multi-threaded scanning (up to 32 workers)       \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • Intelligent SSD/HDD detection and optimization              \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • BFS (breadth-first) and DFS (depth-first) strategies       \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • Advanced filtering: patterns, depth limits, exclusions     \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • Resume capability for interrupted scans                     \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • Real-time dashboard with live metrics                       \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • SQLite persistence with session history                     \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • Dry-run mode for safe testing                               \033[96m│\033[0m")
+        print("\033[96m│\033[0m                                                                   \033[96m│\033[0m")
+        print("\033[96m│\033[0m  \033[92m📊 PERFORMANCE:\033[0m                                                \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • SSD: 10-12x faster with 16 threads + BFS                    \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • HDD: 3-4x faster with 4 threads + DFS                       \033[96m│\033[0m")
+        print("\033[96m│\033[0m    • Average scan rate: 200-500 folders/second (SSD)             \033[96m│\033[0m")
+        print("\033[96m│\033[0m                                                                   \033[96m│\033[0m")
+        print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
         input("Press Enter to return to main menu...")
 
     def configure_and_run(self):
@@ -293,31 +296,27 @@ class Menu:
             print("\n\033[93m2. OPERATION MODE\033[0m")
             print("   [1] Dry Run     : Simulation only (safe, no deletion)")
             print("   [2] Delete Mode : ACTUALLY REMOVES EMPTY FOLDERS ONLY")
-            mode_choice = self.get_input("   Choice [1-2]", "mode", ['1', '2', 't', 'd'])
-            # Map both numbers and letters to mode
-            mode_map = {'1': 't', '2': 'd', 't': 't', 'd': 'd'}
-            mode = mode_map[mode_choice]
-            self.defaults["mode"] = mode
+            mode_names = {'1': 'Dry Run', '2': 'Delete'}
+            mode_choice = self.get_input("   Choice [1-2]", "mode", ['1', '2'], value_map=mode_names)
+            self.defaults["mode"] = mode_choice
 
             # 3. Hardware
             print("\n\033[93m3. HARDWARE STRATEGY\033[0m")
             print("   [1] Auto (Recommended) - Detects SSD/HDD automatically")
             print("   [2] SSD (Fast)         - 16 threads, BFS strategy")
             print("   [3] HDD (Safe)         - 4 threads, DFS strategy")
-            disk_choice = self.get_input("   Choice [1-3]", "disk", ['1', '2', '3', 'auto', 'ssd', 'hdd'])
-            disk_map = {'1': 'auto', '2': 'ssd', '3': 'hdd', 'auto': 'auto', 'ssd': 'ssd', 'hdd': 'hdd'}
-            disk = disk_map[disk_choice]
-            self.defaults["disk"] = disk
+            disk_names = {'1': 'Auto', '2': 'SSD', '3': 'HDD'}
+            disk_choice = self.get_input("   Choice [1-3]", "disk", ['1', '2', '3'], value_map=disk_names)
+            self.defaults["disk"] = disk_choice
 
             # 4. Strategy
             print("\n\033[93m4. SCAN STRATEGY\033[0m")
             print("   [1] Auto (Recommended) - Match hardware type")
             print("   [2] BFS (Parallel)     - Breadth-first search")
             print("   [3] DFS (Sequential)   - Depth-first search")
-            strategy_choice = self.get_input("   Choice [1-3]", "strategy", ['1', '2', '3', 'auto', 'bfs', 'dfs'])
-            strategy_map = {'1': 'auto', '2': 'bfs', '3': 'dfs', 'auto': 'auto', 'bfs': 'bfs', 'dfs': 'dfs'}
-            strategy = strategy_map[strategy_choice]
-            self.defaults["strategy"] = strategy
+            strategy_names = {'1': 'Auto', '2': 'BFS', '3': 'DFS'}
+            strategy_choice = self.get_input("   Choice [1-3]", "strategy", ['1', '2', '3'], value_map=strategy_names)
+            self.defaults["strategy"] = strategy_choice
 
             # 5. Workers
             print("\n\033[93m5. THREAD WORKERS\033[0m")
@@ -460,33 +459,44 @@ class Menu:
         
         self.defaults = self.load_config()
         
-        print("\n\033[96m╔═══ LOADED CONFIGURATION ══════════════════════════════════════════╗\033[0m")
-        print("\033[96m║\033[0m \033[92mConfiguration loaded from:\033[0m void_walker_config.json            \033[96m║\033[0m")
-        print("\033[96m╚═══════════════════════════════════════════════════════════════════╝\033[0m\n")
+        print("\n\033[96m┌─── LOADED CONFIGURATION ──────────────────────────────────────────┐\033[0m")
+        print("\033[96m│\033[0m \033[92mConfiguration loaded from:\033[0m void_walker_config.json            \033[96m│\033[0m")
+        print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
         
         print("\033[93mCurrent Settings:\033[0m")
+        # Maps for displaying human-readable values
+        mode_names = {'1': 'Dry Run', '2': 'Delete'}
+        disk_names = {'1': 'Auto', '2': 'SSD', '3': 'HDD'}
+        strategy_names = {'1': 'Auto', '2': 'BFS', '3': 'DFS'}
+        
         for key, value in self.defaults.items():
             if isinstance(value, list):
                 display_val = ", ".join(value) if value else "none"
+            elif key == "mode" and str(value) in mode_names:
+                display_val = f"{value}:{mode_names[str(value)]}"
+            elif key == "disk" and str(value) in disk_names:
+                display_val = f"{value}:{disk_names[str(value)]}"
+            elif key == "strategy" and str(value) in strategy_names:
+                display_val = f"{value}:{strategy_names[str(value)]}"
             else:
                 display_val = str(value)
             print(f"  \033[96m{key:15}\033[0m : {display_val}")
         
-        print("\n\033[96m╔═══ OPTIONS ═══════════════════════════════════════════════════════╗\033[0m")
-        print("\033[96m║\033[0m  \033[92m[R]\033[0m Run with this configuration                                \033[96m║\033[0m")
-        print("\033[96m║\033[0m  \033[93m[E]\033[0m Edit configuration before running                          \033[96m║\033[0m")
-        print("\033[96m║\033[0m  \033[90m[M]\033[0m Return to main menu                                        \033[96m║\033[0m")
-        print("\033[96m║\033[0m  \033[91m[Q]\033[0m Quit                                                       \033[96m║\033[0m")
-        print("\033[96m╚═══════════════════════════════════════════════════════════════════╝\033[0m\n")
+        print("\n\033[96m┌─── OPTIONS ───────────────────────────────────────────────────────┐\033[0m")
+        print("\033[96m│\033[0m  \033[92m[R]\033[0m Run with this configuration                                \033[96m│\033[0m")
+        print("\033[96m│\033[0m  \033[93m[E]\033[0m Edit configuration before running                          \033[96m│\033[0m")
+        print("\033[96m│\033[0m  \033[90m[M]\033[0m Return to main menu                                        \033[96m│\033[0m")
+        print("\033[96m│\033[0m  \033[91m[Q]\033[0m Quit                                                       \033[96m│\033[0m")
+        print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
         
         choice = input("\033[96mYour choice [R]:\033[0m ").strip().lower()
         
         if choice == '' or choice == 'r':
             # Run immediately with loaded config
             target_path = self.defaults.get("path", os.getcwd())
-            mode = self.defaults.get("mode", "t")
-            disk = self.defaults.get("disk", "a")
-            strategy = self.defaults.get("strategy", "auto")
+            mode = self.defaults.get("mode", "1")
+            disk = self.defaults.get("disk", "1")
+            strategy = self.defaults.get("strategy", "1")
             workers = self.defaults.get("workers", 0)
             min_depth = self.defaults.get("min_depth", 0)
             max_depth = self.defaults.get("max_depth", 10000)
@@ -528,11 +538,22 @@ class Menu:
         print("\033[93m CURRENT CONFIGURATION\033[0m")
         print(f"\033[96m{sep}\033[0m")
         
+        # Maps for displaying human-readable values
+        mode_names = {'1': 'Dry Run', '2': 'Delete'}
+        disk_names = {'1': 'Auto', '2': 'SSD', '3': 'HDD'}
+        strategy_names = {'1': 'Auto', '2': 'BFS', '3': 'DFS'}
+        
         for key, value in self.defaults.items():
             if isinstance(value, list):
                 display_val = ", ".join(value) if value else "None"
             elif isinstance(value, bool):
                 display_val = "Yes" if value else "No"
+            elif key == "mode" and str(value) in mode_names:
+                display_val = f"{value}:{mode_names[str(value)]}"
+            elif key == "disk" and str(value) in disk_names:
+                display_val = f"{value}:{disk_names[str(value)]}"
+            elif key == "strategy" and str(value) in strategy_names:
+                display_val = f"{value}:{strategy_names[str(value)]}"
             else:
                 display_val = str(value)
             print(f"  \033[96m{key:18}\033[0m : {display_val}")
@@ -603,24 +624,27 @@ class Menu:
             # Running from Python - need to call main.py
             cmd = [sys.executable, "main.py", path]
         
-        # Mode
-        if mode == 'd': 
+        # Mode: Convert number to actual value
+        # '1' = Dry Run (no flag), '2' = Delete Mode (--delete)
+        if mode == '2': 
             cmd.append("--delete")
         
-        # Hardware
+        # Hardware: Convert number to actual value
+        # '1' = Auto, '2' = SSD, '3' = HDD
         cmd.append("--disk")
-        if disk == 's': 
+        if disk == '2': 
             cmd.append("ssd")
-        elif disk == 'h': 
+        elif disk == '3': 
             cmd.append("hdd")
         else: 
             cmd.append("auto")
         
-        # Strategy
+        # Strategy: Convert number to actual value
+        # '1' = Auto, '2' = BFS, '3' = DFS
         cmd.append("--strategy")
-        if strategy == 'b':
+        if strategy == '2':
             cmd.append("bfs")
-        elif strategy == 'd':
+        elif strategy == '3':
             cmd.append("dfs")
         else:
             cmd.append("auto")
