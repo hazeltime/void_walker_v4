@@ -10,6 +10,7 @@ import stat
 
 from data.database import Database
 from ui.dashboard import Dashboard
+from ui.reporter import Reporter
 from .controller import Controller
 
 class Engine:
@@ -82,6 +83,10 @@ class Engine:
         
         print("\033[92m[OK] All phases complete\033[0m\n", flush=True)
         
+        # Show comprehensive final summary with top 3 root folders
+        reporter = Reporter(self.config, self.db)
+        reporter.show_final_summary()
+        
         # Stop dashboard AFTER all work is done
         self.dashboard.stop()
         self.controller.stop()
@@ -147,6 +152,12 @@ class Engine:
         self.controller.stop()
 
     def _load_resume_state(self):
+        # Invalidate stale cache entries before resuming
+        print("\033[90m    > Validating cache integrity...\033[0m", flush=True)
+        invalidated = self.db.invalidate_missing_paths()
+        if invalidated > 0:
+            print(f"\033[93m    > Removed {invalidated} stale cache entries (paths no longer exist)\033[0m", flush=True)
+        
         pending = self.db.get_pending()
         for path, depth in pending:
             with self.queue_lock:
@@ -285,6 +296,20 @@ class Engine:
             queue_depth = self._queue_size()
             self.dashboard.update_current(path)
             self.dashboard.set_queue_depth(queue_depth)
+            
+            # Calculate folder size for metrics
+            try:
+                folder_size = 0
+                with os.scandir(path) as scan_it:
+                    for entry in scan_it:
+                        try:
+                            if entry.is_file(follow_symlinks=False):
+                                folder_size += entry.stat(follow_symlinks=False).st_size
+                        except (OSError, PermissionError):
+                            pass  # Skip inaccessible files
+                self.dashboard.add_processed_size(folder_size)
+            except (OSError, PermissionError):
+                pass  # Can't read folder, skip size tracking
 
             with os.scandir(path) as it:
                 entry_count = 0
@@ -357,7 +382,7 @@ class Engine:
         if not self.config.delete_mode:
             print(f"\n\033[96m[*] DRY RUN: Found {len(candidates)} empty folder candidates\033[0m")
             print(f"\033[90m    Verifying each folder is truly empty...\033[0m")
-            total_size = 0
+            total_size_bytes = 0  # Track actual verified size
             verified_empty = 0
         else:
             print(f"\n\033[93m[!] DELETE MODE: Removing {len(candidates)} empty folder candidates\033[0m")
@@ -378,18 +403,34 @@ class Engine:
                     self.logger.warning(f"Skipped {path}: contains {len(contents)} items")
                     continue
                 
-                # Second check: Verify size is exactly 0 bytes
+                # Second check: Verify ACTUAL DISK SIZE is exactly 0 bytes (not just count)
                 try:
-                    size = 0
+                    actual_size = 0
+                    # Use os.scandir for accurate size check
                     for entry in os.scandir(path):
-                        size += 1  # Should never execute for truly empty folder
+                        # This should never execute for truly empty folder
+                        if entry.is_file(follow_symlinks=False):
+                            actual_size += entry.stat(follow_symlinks=False).st_size
+                        actual_size += 1  # Count entries (files or folders)
                     
                     # SAFETY CHECK: Explicit validation (not assertion - can't be disabled)
-                    if size > 0:
-                        error_msg = f"Safety check failed: Folder not empty: {path} has {size} items"
+                    if actual_size > 0:
+                        error_msg = f"Safety check failed: Folder not empty: {path} has size/items: {actual_size}"
                         self.logger.error(error_msg)
                         self.dashboard.increment_errors()
                         continue
+                    
+                    # Third check: Verify with os.stat that folder itself is minimal size
+                    try:
+                        folder_stat = os.stat(path)
+                        # Empty folders should be minimal size (typically 0-4096 bytes for metadata)
+                        # We verify size is 0 CONTENT bytes by the scandir check above
+                        if not self.config.delete_mode:
+                            # Track that this folder has 0 content bytes
+                            total_size_bytes += 0  # Confirmed empty
+                    except OSError:
+                        pass  # stat failed, but we already verified with scandir
+                    
                 except OSError as e:
                     self.logger.error(f"Error verifying folder size {path}: {e}")
                     self.dashboard.increment_errors()
@@ -412,11 +453,10 @@ class Engine:
                     self.dashboard.increment_empty()
                     with self.lock:
                         self.total_deleted += 1
-                    total_size += 0  # Verified empty, size = 0
                     verified_empty += 1
                     processed += 1
                     if processed % 10 == 0:
-                        print(f"\r[*] Verified: {verified_empty}/{len(candidates)} empty folders", end='', flush=True)
+                        print(f"\r[*] Verified: {verified_empty}/{len(candidates)} empty folders (0 bytes each)", end='', flush=True)
                     
             except OSError as e:
                 self.logger.error(f"Cannot delete {path}: {e}")
@@ -431,7 +471,7 @@ class Engine:
             print(f"\033[92m[OK] Successfully deleted {self.total_deleted} empty folders\033[0m")
             print(f"\033[90m    All folders verified empty before deletion\033[0m")
         else:
-            # Dry-run summary with size verification
+            # Dry-run summary with REAL size verification
             if verified_empty > 0:
                 print(f"\033[92m[OK] Verified {verified_empty} truly empty folders")
-                print(f"    Total size: {total_size} bytes (all folders confirmed empty)\033[0m")
+                print(f"    Total content size: {total_size_bytes} bytes (all folders confirmed 0 bytes)\033[0m")

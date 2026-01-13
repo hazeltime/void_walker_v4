@@ -192,6 +192,35 @@ class Database:
         except Exception as e:
             self._record_error("save_config", e, root_path)
 
+    def invalidate_missing_paths(self) -> int:
+        """Remove cached entries for paths that no longer exist. Returns count of invalidated entries."""
+        try:
+            with self.lock:
+                # Get all pending paths for this session
+                self.cursor.execute(
+                    "SELECT path FROM folders WHERE session_id=? AND status='PENDING'",
+                    (self.session_id,)
+                )
+                pending_paths = [row[0] for row in self.cursor.fetchall()]
+                
+                # Check which paths no longer exist
+                import os
+                invalid_count = 0
+                for path in pending_paths:
+                    if not os.path.exists(path):
+                        self.cursor.execute(
+                            "DELETE FROM folders WHERE path=? AND session_id=?",
+                            (path, self.session_id)
+                        )
+                        invalid_count += 1
+                
+                if invalid_count > 0:
+                    self.conn.commit()
+                return invalid_count
+        except Exception as e:
+            self._record_error("invalidate_missing_paths", e)
+            return 0
+    
     def mark_completed(self):
         """Mark session as completed"""
         try:
@@ -232,6 +261,79 @@ class Database:
                 }
             return None
 
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get session statistics including counts and sizes."""
+        try:
+            with self.lock:
+                # Count total scanned and empty folders
+                self.cursor.execute(
+                    "SELECT COUNT(*) FROM folders WHERE session_id=? AND status='SCANNED'",
+                    (self.session_id,)
+                )
+                total_scanned = self.cursor.fetchone()[0]
+                
+                self.cursor.execute(
+                    "SELECT COUNT(*) FROM folders WHERE session_id=? AND status='SCANNED' AND file_count=0",
+                    (self.session_id,)
+                )
+                total_empty = self.cursor.fetchone()[0]
+                
+                self.cursor.execute(
+                    "SELECT COUNT(*) FROM folders WHERE session_id=? AND status='ERROR'",
+                    (self.session_id,)
+                )
+                total_errors = self.cursor.fetchone()[0]
+                
+                return {
+                    'total_scanned': total_scanned,
+                    'total_empty': total_empty,
+                    'total_errors': total_errors
+                }
+        except Exception as e:
+            self._record_error("get_statistics", e)
+            return {'total_scanned': 0, 'total_empty': 0, 'total_errors': 0}
+    
+    def get_top_root_folders(self, limit: int = 3) -> List[Tuple[str, int]]:
+        """Get top N root folders with most empty subfolders.
+        
+        Returns:
+            List of (root_folder, empty_count) tuples sorted by count descending.
+        """
+        try:
+            with self.lock:
+                # Get all empty folder paths and extract top-level directories
+                self.cursor.execute("""
+                    SELECT path FROM folders
+                    WHERE session_id=? AND status='SCANNED' AND file_count=0
+                """, (self.session_id,))
+                
+                empty_paths = [row[0] for row in self.cursor.fetchall()]
+                
+                # Count empty folders under each root (first level directory)
+                import os
+                from collections import Counter
+                root_counts = Counter()
+                
+                for path in empty_paths:
+                    # Extract root folder (first directory component)
+                    parts = os.path.normpath(path).split(os.sep)
+                    if len(parts) >= 2:
+                        # For absolute paths like C:\Users\..., root is C:\Users
+                        # For relative paths, root is first directory
+                        if os.name == 'nt' and parts[0].endswith(':'):
+                            # Windows: C:\folder1 -> root is C:\folder1
+                            root = os.sep.join(parts[:2]) if len(parts) > 1 else parts[0]
+                        else:
+                            # Unix or relative: /folder1 or folder1
+                            root = parts[0] if parts[0] else os.sep.join(parts[:2])
+                        root_counts[root] += 1
+                
+                # Return top N
+                return root_counts.most_common(limit)
+        except Exception as e:
+            self._record_error("get_top_root_folders", e)
+            return []
+    
     def commit(self):
         try:
             with self.lock:

@@ -29,6 +29,45 @@ class Reporter:
         # Note: We do NOT hold the user here anymore using input().
         # The Menu Loop in menu.py handles the pause.
     
+    def show_final_summary(self) -> None:
+        """Display comprehensive final summary with statistics and top root folders."""
+        print("\n" + "="*70)
+        print(" " + "FINAL SESSION SUMMARY".center(68))
+        print("="*70)
+        
+        # Get statistics from database
+        stats = self.db.get_statistics()
+        total_scanned = stats.get('total_scanned', 0)
+        total_empty = stats.get('total_empty', 0)
+        total_errors = stats.get('total_errors', 0)
+        
+        print(f" Session ID:       {self.config.session_id}")
+        print(f" Root Path:        {self.config.root_path}")
+        print(f" Log File:         logs/{self.config.session_id}.log")
+        print("-" * 70)
+        print(f" Total Scanned:    {total_scanned:,} folders")
+        print(f" Empty Found:      {total_empty:,} folders ({total_empty*100/max(total_scanned,1):.1f}%)")
+        print(f" Errors:           {total_errors:,} folders")
+        print("-" * 70)
+        
+        # Show top 3 root folders with most empty subfolders
+        print(" Top 3 Root Folders with Most Empty Subfolders:")
+        top_roots = self.db.get_top_root_folders(limit=3)
+        
+        if top_roots:
+            for idx, (root_folder, count) in enumerate(top_roots, 1):
+                # Shorten path if too long
+                display_root = root_folder
+                if len(display_root) > 50:
+                    display_root = "..." + display_root[-47:]
+                print(f"   {idx}. {display_root}")
+                print(f"      Empty subfolders: {count:,} ({count*100/max(total_empty,1):.1f}% of total)")
+        else:
+            print("   (No empty folders found)")
+        
+        print("="*70)
+        print()
+    
     def _scroll_error_list(self, errors, page_size=20):
         """Display errors in a scrollable paginated list with Page Up/Down support."""
         total = len(errors)

@@ -28,7 +28,9 @@ class Dashboard:
             "errors": 0,
             "scan_rate": 0.0,
             "queue_depth": 0,
-            "active_workers": 0
+            "active_workers": 0,
+            "total_size_bytes": 0,  # Total bytes processed
+            "processing_speed_bps": 0.0  # Bytes per second
         }
         self.start_time = time.time()
 
@@ -89,6 +91,14 @@ class Dashboard:
         """Thread-safe update of queue depth"""
         with self.lock:
             self.stats['queue_depth'] = depth
+    
+    def add_processed_size(self, size_bytes: int):
+        """Thread-safe increment of total processed size"""
+        with self.lock:
+            self.stats['total_size_bytes'] += size_bytes
+            elapsed = time.time() - self.start_time
+            if elapsed > 0:
+                self.stats['processing_speed_bps'] = self.stats['total_size_bytes'] / elapsed
 
     def _loop(self):
         i = 0
@@ -115,6 +125,8 @@ class Dashboard:
                 queue = self.stats.get('queue_depth', 0)
                 empty = self.stats.get('empty', 0)
                 deleted = self.stats.get('deleted', 0)
+                total_bytes = self.stats.get('total_size_bytes', 0)
+                speed_bps = self.stats.get('processing_speed_bps', 0)
             
             # Truncate path if too long
             max_path_len = max(self.MIN_PATH_LENGTH, cols - 20)
@@ -125,11 +137,25 @@ class Dashboard:
             elapsed = time.time() - self.start_time
             elapsed_str = str(timedelta(seconds=int(elapsed)))
             
+            # Format size and speed for human-readable display
+            def format_bytes(b):
+                if b < 1024:
+                    return f"{b}B"
+                elif b < 1024**2:
+                    return f"{b/1024:.1f}KB"
+                elif b < 1024**3:
+                    return f"{b/(1024**2):.1f}MB"
+                else:
+                    return f"{b/(1024**3):.2f}GB"
+            
+            size_str = format_bytes(total_bytes)
+            speed_str = format_bytes(speed_bps) + "/s" if speed_bps > 0 else "0B/s"
+            
             # Build output lines
             line1 = f"[{s}] {self.phase} | {self.status} | Workers: {self.config.workers}"
             line2 = f"{path}"
             line3 = f"Scanned: {scanned} | Rate: {rate:.1f}/s | Queue: {queue} | Empty: {empty} | Deleted: {deleted} | Errors: {errors} | Time: {elapsed_str}"
-            line4 = "-" * min(60, cols)
+            line4 = f"Size: {size_str} | Speed: {speed_str} | " + "-" * max(0, min(60, cols) - 30)
             
             # Clear and rewrite (move cursor up on subsequent runs)
             if not first_run:
