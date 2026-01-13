@@ -133,15 +133,44 @@ def main():
         logger.info(f"Target: {config.root_path} | Mode: {'DELETE' if config.delete_mode else 'DRY RUN'}")
         logger.info(f"Strategy: {config.strategy} | Workers: {config.workers}")
 
-        # 4. Execution
+        # 4. Execution - Scanning Phase
         engine = Engine(config, logger)
-        engine.start()
+        engine.scan_only()  # New method: scan without cleanup
+
+        # 4.5. Interactive Review & Confirmation
+        reporter = Reporter(config, engine.db)
+        
+        # Get empty folders before prompting
+        empty_folders = engine.db.get_empty_candidates(config.min_depth)
+        empty_count = len(empty_folders)
+        
+        if empty_count > 0:
+            # Ask if user wants to scroll through the list
+            mode_label = "DELETE" if config.delete_mode else "DRY RUN"
+            print(f"\n\033[96m[*] Found {empty_count} empty folder(s)\033[0m")
+            scroll_choice = input(f"    Would you like to scroll through the list? (y/N): ").lower().strip()
+            
+            if scroll_choice == 'y':
+                reporter.scroll_empty_folders(empty_folders)
+            
+            # Ask if user wants to proceed with cleanup/deletion
+            action_verb = "delete" if config.delete_mode else "mark for deletion"
+            confirm = input(f"\n    Proceed to {action_verb} these {empty_count} empty folder(s)? (y/N): ").lower().strip()
+            
+            if confirm == 'y':
+                print(f"\n\033[96m[*] Starting cleanup phase ({mode_label} mode)...\033[0m\n")
+                engine.cleanup_only()  # New method: cleanup phase only
+            else:
+                print("\n\033[93m[!] Cleanup cancelled by user\033[0m")
+                logger.info("User cancelled cleanup phase")
+        else:
+            print("\n\033[92m[OK] No empty folders found - nothing to clean up\033[0m")
 
         # 5. Reporting
-        Reporter(config, engine.db).show_summary()
+        reporter.show_summary()
         
         # Final completion marker
-        print("\n\033[92m[✓] All operations completed successfully\033[0m", flush=True)
+        print("\n\033[92m[OK] All operations completed successfully\033[0m", flush=True)
         print("\n" + "-"*70, flush=True)
 
     except KeyboardInterrupt:

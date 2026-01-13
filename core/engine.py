@@ -83,6 +83,65 @@ class Engine:
         self.dashboard.stop()
         time.sleep(0.3)  # Give dashboard time to clean up
         self.controller.stop()
+    
+    def scan_only(self):
+        """Phase 1: Scanning only - does not perform cleanup"""
+        print("\033[90m    > Setting up database...\033[0m")
+        self.db.setup()
+        
+        # Save config for resume functionality (only if not resuming)
+        if not self.config.resume_mode:
+            self.config.save_to_db(self.db)
+        
+        print("\033[90m    > Starting keyboard controller...\033[0m")
+        self.controller.start()
+        print("\033[90m    > Launching real-time dashboard...\033[0m")
+        self.dashboard.start()
+
+        self.logger.info("Phase 1: Scanning")
+        self.dashboard.set_phase("SCANNING")
+        
+        if not self.config.resume_mode:
+            print(f"\033[92m[OK] Ready! Starting scan from: {self.config.root_path}\033[0m", flush=True)
+            print(f"[*] Starting {self.config.workers} workers...", flush=True)
+            print("")
+            self._enqueue(self.config.root_path, 0)
+            self.db.add_folder(self.config.root_path, 0)
+        else:
+            print("\033[93m[*] Loading resume state from cache...\033[0m", flush=True)
+            self._load_resume_state()
+            print(f"\033[92m[OK] Resuming with {self._queue_size()} pending folders\033[0m", flush=True)
+            print("")
+
+        self._process_queue()
+        
+        # Scan complete - show summary
+        print(f"\n\033[92m[OK] Scan Complete!\033[0m", flush=True)
+        print(f"    Folders scanned: {self.total_scanned}", flush=True)
+        print(f"    Empty found: {self.total_empty}", flush=True)
+        print(f"    Errors: {self.total_errors}\n", flush=True)
+        
+        # Stop dashboard after scan
+        self.dashboard.stop()
+        time.sleep(0.3)  # Give dashboard time to clean up
+    
+    def cleanup_only(self):
+        """Phase 2: Cleanup only - assumes scanning already completed"""
+        self.logger.info("Phase 2: Cleanup")
+        
+        # Restart dashboard for cleanup phase
+        self.dashboard.start()
+        self.dashboard.set_phase("CLEANUP")
+        
+        print("\033[96m[*] Phase 2: Analyzing empty folders...\033[0m", flush=True)
+        self._process_cleanup()
+        
+        print("\033[92m[OK] Cleanup phase complete\033[0m\n", flush=True)
+        
+        # Stop dashboard and controller
+        self.dashboard.stop()
+        time.sleep(0.3)
+        self.controller.stop()
 
     def _load_resume_state(self):
         pending = self.db.get_pending()
@@ -358,7 +417,7 @@ class Engine:
         # Final summary
         print()  # New line after progress
         if self.config.delete_mode:
-            print(f"\033[92m[✓] Successfully deleted {self.total_deleted} empty folders\033[0m")
+            print(f"\033[92m[OK] Successfully deleted {self.total_deleted} empty folders\033[0m")
             print(f"\033[90m    All folders verified empty before deletion\033[0m")
         else:
             # Dry-run summary with size verification
