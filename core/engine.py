@@ -189,6 +189,7 @@ class Engine:
             return len(self.queue)
 
     def _is_filtered(self, path: str, name: str, depth: int) -> bool:
+        """Check if path should be filtered. Thread-safe: config is immutable after initialization."""
         if depth > self.config.max_depth: return True
         if self.config.include_names:
             if not any(fnmatch.fnmatch(name, pat) for pat in self.config.include_names):
@@ -294,12 +295,14 @@ class Engine:
         try:
             # Check for Junctions/Reparse Points (WinError 1920 cause)
             try:
-                st = os.lstat(path)
-                if stat.S_ISLNK(st.st_mode) or (os.name == 'nt' and hasattr(stat, 'S_ISDIR') and (st.st_mode & stat.S_IFMT) == stat.S_IFDIR and (st.st_mode & 0o170000) == 0o120000):
+                # Use os.path.islink for reliable cross-platform symlink detection
+                if os.path.islink(path):
                     self.logger.debug(f"Skipping symlink/junction: {path}")
                     return
             except Exception as e:
-                self.logger.debug(f"Error checking symlink status for {path}: {e}")
+                # If we can't determine if it's a symlink, skip it for safety
+                self.logger.debug(f"Error checking symlink status for {path}: {e}, skipping for safety")
+                return
 
             queue_depth = self._queue_size()
             self.dashboard.update_current(path)
@@ -370,9 +373,11 @@ class Engine:
         """Manual state save triggered by user"""
         self.db.commit()
         pending = self._queue_size()
-        self.logger.info(f"State saved manually: {self.total_scanned} folders, {pending} pending")
+        # Read shared state atomically under lock
         with self.lock:
-            self.dashboard.set_status(f"SAVED ({pending} pending)")
+            scanned_count = self.total_scanned
+        self.logger.info(f"State saved manually: {scanned_count} folders, {pending} pending")
+        self.dashboard.set_status(f"SAVED ({pending} pending)")
         time.sleep(1)  # Brief pause to show message
 
     def _process_cleanup(self):
@@ -411,16 +416,17 @@ class Engine:
                 # Second check: Verify ACTUAL DISK SIZE is exactly 0 bytes (not just count)
                 try:
                     actual_size = 0
+                    entry_count = 0
                     # Use os.scandir for accurate size check
                     for entry in os.scandir(path):
                         # This should never execute for truly empty folder
+                        entry_count += 1  # Count all entries (files or folders)
                         if entry.is_file(follow_symlinks=False):
                             actual_size += entry.stat(follow_symlinks=False).st_size
-                        actual_size += 1  # Count entries (files or folders)
                     
                     # SAFETY CHECK: Explicit validation (not assertion - can't be disabled)
-                    if actual_size > 0:
-                        error_msg = f"Safety check failed: Folder not empty: {path} has size/items: {actual_size}"
+                    if entry_count > 0:
+                        error_msg = f"Safety check failed: Folder not empty: {path} has {entry_count} items, {actual_size} bytes"
                         self.logger.error(error_msg)
                         self.dashboard.increment_errors()
                         continue

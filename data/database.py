@@ -232,6 +232,11 @@ class Database:
                     self.conn.commit()
                 return invalid_count
         except Exception as e:
+            # Rollback any partial changes to maintain database consistency
+            try:
+                self.conn.rollback()
+            except Exception:
+                pass  # Rollback failure is non-critical
             self._record_error("invalidate_missing_paths", e)
             return 0
     
