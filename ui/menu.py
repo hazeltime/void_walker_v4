@@ -35,6 +35,22 @@ class Menu:
             try:
                 with open(self.config_file, "r") as f:
                     saved = json.load(f)
+                    
+                    # Migrate old letter values to numeric
+                    if "mode" in saved:
+                        if saved["mode"] == "t": saved["mode"] = "1"
+                        elif saved["mode"] == "d": saved["mode"] = "2"
+                    
+                    if "disk" in saved:
+                        if saved["disk"] == "auto": saved["disk"] = "1"
+                        elif saved["disk"] == "ssd": saved["disk"] = "2"
+                        elif saved["disk"] == "hdd": saved["disk"] = "3"
+                    
+                    if "strategy" in saved:
+                        if saved["strategy"] == "auto": saved["strategy"] = "1"
+                        elif saved["strategy"] == "bfs": saved["strategy"] = "2"
+                        elif saved["strategy"] == "dfs": saved["strategy"] = "3"
+                    
                     defaults.update(saved)
             except (json.JSONDecodeError, IOError, KeyError) as e:
                 print(f"[!] Failed to load {self.config_file}: {e}. Using defaults.", file=sys.stderr)
@@ -251,28 +267,28 @@ class Menu:
     def show_about(self):
         """Display about information"""
         self.print_header()
-        print("\n\033[96m┌─── ABOUT VOID WALKER ─────────────────────────────────────────────┐\033[0m")
-        print("\033[96m│\033[0m                                                                   \033[96m│\033[0m")
-        print("\033[96m│\033[0m  \033[93mVersion:\033[0m 4.1.1                                                  \033[96m│\033[0m")
-        print("\033[96m│\033[0m  \033[93mRelease Date:\033[0m January 2026                                     \033[96m│\033[0m")
-        print("\033[96m│\033[0m  \033[93mRepository:\033[0m github.com/hazeltime/void_walker_v4                \033[96m│\033[0m")
-        print("\033[96m│\033[0m                                                                   \033[96m│\033[0m")
-        print("\033[96m│\033[0m  \033[92m⚡ KEY FEATURES:\033[0m                                                \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • Concurrent multi-threaded scanning (up to 32 workers)       \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • Intelligent SSD/HDD detection and optimization              \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • BFS (breadth-first) and DFS (depth-first) strategies       \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • Advanced filtering: patterns, depth limits, exclusions     \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • Resume capability for interrupted scans                     \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • Real-time dashboard with live metrics                       \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • SQLite persistence with session history                     \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • Dry-run mode for safe testing                               \033[96m│\033[0m")
-        print("\033[96m│\033[0m                                                                   \033[96m│\033[0m")
-        print("\033[96m│\033[0m  \033[92m📊 PERFORMANCE:\033[0m                                                \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • SSD: 10-12x faster with 16 threads + BFS                    \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • HDD: 3-4x faster with 4 threads + DFS                       \033[96m│\033[0m")
-        print("\033[96m│\033[0m    • Average scan rate: 200-500 folders/second (SSD)             \033[96m│\033[0m")
-        print("\033[96m│\033[0m                                                                   \033[96m│\033[0m")
-        print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
+        print("\n\033[96m=== ABOUT VOID WALKER =====================================================\033[0m")
+        print("")
+        print("  \033[93mVersion:\033[0m 4.1.1")
+        print("  \033[93mRelease Date:\033[0m January 2026")
+        print("  \033[93mRepository:\033[0m github.com/hazeltime/void_walker_v4")
+        print("")
+        print("  \033[92mKEY FEATURES:\033[0m                                                    ")
+        print("    - Concurrent multi-threaded scanning (up to 32 workers)")
+        print("    - Intelligent SSD/HDD detection and optimization")
+        print("    - BFS (breadth-first) and DFS (depth-first) strategies")
+        print("    - Advanced filtering: patterns, depth limits, exclusions")
+        print("    - Resume capability for interrupted scans")
+        print("    - Real-time dashboard with live metrics")
+        print("    - SQLite persistence with session history")
+        print("    - Dry-run mode for safe testing")
+        print("")
+        print("  \033[92mPERFORMANCE:\033[0m                                                      ")
+        print("    - SSD: 10-12x faster with 16 threads + BFS")
+        print("    - HDD: 3-4x faster with 4 threads + DFS")
+        print("    - Average scan rate: 200-500 folders/second (SSD)")
+        print("")
+        print("\033[96m==========================================================================\033[0m\n")
         input("Press Enter to return to main menu...")
 
     def configure_and_run(self):
@@ -373,14 +389,17 @@ class Menu:
                 print("   \033[96m[2]\033[0m Custom selection")
                 print("   \033[96m[3]\033[0m None (skip)")
                 
-                win_choice = input("   Your choice [\033[1;93m3\033[0m]: ").strip() or '3'
+                # Default to 3 (None/skip) - stored in defaults if needed
+                default_win = self.defaults.get("windows_exclusions_choice", "3")
+                win_choice = input(f"   Your choice [\033[1;93m{default_win}\033[0m]: ").strip() or default_win
+                self.defaults["windows_exclusions_choice"] = win_choice
                 
                 if win_choice == '1':
                     # Add all Windows exclusions
                     for folder_name, pattern in windows_defaults.items():
                         if pattern not in exclude_paths:
                             exclude_paths.append(pattern)
-                    print(f"   \033[92m[✓] Added {len(windows_defaults)} Windows system folders to exclusions\033[0m")
+                    print(f"   \033[92m[OK] Added {len(windows_defaults)} Windows system folders to exclusions\033[0m")
                 elif win_choice == '2':
                     print("\n   \033[90mEnter folder numbers to exclude (e.g., 1,3,5):\033[0m")
                     for idx, (name, pattern) in enumerate(windows_defaults.items(), 1):
@@ -396,7 +415,7 @@ class Menu:
                                     pattern = items[idx-1][1]
                                     if pattern not in exclude_paths:
                                         exclude_paths.append(pattern)
-                            print(f"   \033[92m[✓] Added {len(selected_indices)} folder(s) to exclusions\033[0m")
+                            print(f"   \033[92m[OK] Added {len(selected_indices)} folder(s) to exclusions\033[0m")
                         except (ValueError, IndexError):
                             print("   \033[91m[!] Invalid selection, skipping\033[0m")
                 
@@ -438,7 +457,7 @@ class Menu:
                 return
 
             # LAUNCH
-            self.launch_engine(target_path, mode, disk, strategy, workers, min_depth, max_depth, 
+            self.launch_engine(target_path, mode_choice, disk_choice, strategy_choice, workers, min_depth, max_depth, 
                              exclude_paths, exclude_names, include_names)
             
             # POST-RUN LOOP

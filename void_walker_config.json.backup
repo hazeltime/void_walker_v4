@@ -1,0 +1,14 @@
+{
+    "path": "F:\\",
+    "mode": "t",
+    "disk": "ssd",
+    "strategy": "bfs",
+    "workers": 8,
+    "min_depth": 0,
+    "max_depth": 10000,
+    "exclude_paths": [],
+    "exclude_names": [],
+    "include_names": [],
+    "resume": false,
+    "windows_exclusions": []
+}
