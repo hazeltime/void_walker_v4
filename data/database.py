@@ -2,6 +2,7 @@ import sqlite3
 import json
 import threading
 import sys
+from typing import Optional, List, Tuple, Dict, Any
 
 class Database:
     def __init__(self, db_path, session_id):
@@ -75,7 +76,7 @@ class Database:
             total_sessions = self.cursor.fetchone()[0]
         print(f"\033[90m       Database ready ({total_sessions} total sessions)\033[0m")
 
-    def add_folder(self, path, depth):
+    def add_folder(self, path: str, depth: int) -> bool:
         try:
             with self.lock:
                 self.cursor.execute(
@@ -139,7 +140,7 @@ class Database:
         except Exception as e:
             self._record_error("mark_would_delete", e, path)
 
-    def get_pending(self):
+    def get_pending(self) -> List[Tuple[str, int]]:
         with self.lock:
             self.cursor.execute(
                 "SELECT path, depth FROM folders WHERE status='PENDING' AND session_id=? ORDER BY depth ASC",
@@ -147,7 +148,7 @@ class Database:
             )
             return self.cursor.fetchall()
 
-    def get_empty_candidates(self, min_depth):
+    def get_empty_candidates(self, min_depth: int) -> List[str]:
         # We want folders processed, with 0 files, ordered deep to shallow
         with self.lock:
             self.cursor.execute("""
@@ -157,7 +158,7 @@ class Database:
             """, (self.session_id, min_depth))
             return [r[0] for r in self.cursor.fetchall()]
 
-    def get_errors(self):
+    def get_errors(self) -> List[Tuple[str, str]]:
         with self.lock:
             self.cursor.execute(
                 "SELECT path, error_msg FROM folders WHERE status='ERROR' AND session_id=?",
@@ -194,7 +195,7 @@ class Database:
             self._record_error("mark_completed", e)
 
     @staticmethod
-    def get_last_incomplete_session(db_path):
+    def get_last_incomplete_session(db_path: str) -> Optional[Dict[str, Any]]:
         """Get the most recent incomplete session for resume"""
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()

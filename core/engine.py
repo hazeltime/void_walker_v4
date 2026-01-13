@@ -4,6 +4,7 @@ import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import deque
+from typing import Optional, Tuple
 import fnmatch
 import stat
 import re
@@ -93,7 +94,7 @@ class Engine:
         with self.queue_lock:
             return len(self.queue)
 
-    def _pop_next(self):
+    def _pop_next(self) -> Optional[Tuple[str, int]]:
         with self.queue_lock:
             if not self.queue:
                 return None
@@ -101,12 +102,12 @@ class Engine:
                 return self.queue.popleft()
             return self.queue.pop()
 
-    def _enqueue(self, path, depth):
+    def _enqueue(self, path: str, depth: int) -> int:
         with self.queue_lock:
             self.queue.append((path, depth))
             return len(self.queue)
 
-    def _is_filtered(self, path, name, depth):
+    def _is_filtered(self, path: str, name: str, depth: int) -> bool:
         if depth > self.config.max_depth: return True
         if self.config.include_names:
             if not any(fnmatch.fnmatch(name, pat) for pat in self.config.include_names):
