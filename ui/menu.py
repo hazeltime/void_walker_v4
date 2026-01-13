@@ -142,7 +142,7 @@ class Menu:
         
         # Show example if provided
         if example:
-            print(f"   \033[90m💡 Example: {example}\033[0m")
+            print(f"   \033[90mExample: {example}\033[0m")
         
         # Colorize default value (Bright Yellow + Bold)
         prompt_str = f"{prompt} [\033[1;93m{display_default}\033[0m]\n   \033[90m[H]elp | [S]ave | [V]iew Config | [Q]uit\033[0m\n   → "
@@ -212,21 +212,21 @@ class Menu:
             print("empty folders. It's optimized for both SSD and HDD with intelligent")
             print("concurrent scanning, depth filtering, and pattern-based exclusions.\n")
             
-            print("\033[96m┌─── QUICK START ───────────────────────────────────────────────────┐\033[0m")
-            print("\033[96m│\033[0m  \033[92m[1]\033[0m New Scan         - Configure and run a new folder scan          \033[96m│\033[0m")
-            print("\033[96m│\033[0m  \033[92m[2]\033[0m Load & Run       - Load saved config and execute immediately    \033[96m│\033[0m")
-            print("\033[96m│\033[0m  \033[92m[3]\033[0m Resume Session   - Continue a previously interrupted scan       \033[96m│\033[0m")
-            print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
+            print("\033[96m=== QUICK START ===========================================================\033[0m")
+            print("  \033[92m[1]\033[0m New Scan         - Configure and run a new folder scan")
+            print("  \033[92m[2]\033[0m Load & Run       - Load saved config and execute immediately")
+            print("  \033[92m[3]\033[0m Resume Session   - Continue a previously interrupted scan")
+            print("\033[96m==========================================================================\033[0m\n")
             
-            print("\033[96m┌─── INFORMATION ───────────────────────────────────────────────────┐\033[0m")
-            print("\033[96m│\033[0m  \033[93m[4]\033[0m View Cache       - Show previous scan sessions and statistics    \033[96m│\033[0m")
-            print("\033[96m│\033[0m  \033[93m[5]\033[0m Help             - Comprehensive guide to all options            \033[96m│\033[0m")
-            print("\033[96m│\033[0m  \033[93m[6]\033[0m About            - Application info, version, and features       \033[96m│\033[0m")
-            print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
+            print("\033[96m=== INFORMATION ===========================================================\033[0m")
+            print("  \033[93m[4]\033[0m View Cache       - Show previous scan sessions and statistics")
+            print("  \033[93m[5]\033[0m Help             - Comprehensive guide to all options")
+            print("  \033[93m[6]\033[0m About            - Application info, version, and features")
+            print("\033[96m==========================================================================\033[0m\n")
             
-            print("\033[96m┌─── EXIT ──────────────────────────────────────────────────────────┐\033[0m")
-            print("\033[96m│\033[0m  \033[91m[Q]\033[0m Quit             - Exit Void Walker (with confirmation)          \033[96m│\033[0m")
-            print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
+            print("\033[96m=== EXIT ==================================================================\033[0m")
+            print("  \033[91m[Q]\033[0m Quit             - Exit Void Walker (with confirmation)")
+            print("\033[96m==========================================================================\033[0m\n")
             
             choice = input("\033[96mYour choice:\033[0m ").strip().lower()
             
@@ -427,7 +427,7 @@ class Menu:
 
             if action == '2':
                 self.save_config()
-                print("   \033[92m[✓] Configuration saved to void_walker_config.json\033[0m")
+                print("   \033[92m[OK] Configuration saved to void_walker_config.json\033[0m")
                 time.sleep(1)
 
             if action == '3':
@@ -459,9 +459,9 @@ class Menu:
         
         self.defaults = self.load_config()
         
-        print("\n\033[96m┌─── LOADED CONFIGURATION ──────────────────────────────────────────┐\033[0m")
-        print("\033[96m│\033[0m \033[92mConfiguration loaded from:\033[0m void_walker_config.json            \033[96m│\033[0m")
-        print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
+        print("\n\033[96m=== LOADED CONFIGURATION ==================================================\033[0m")
+        print(" \033[92mConfiguration loaded from:\033[0m void_walker_config.json")
+        print("\033[96m==========================================================================\033[0m\n")
         
         print("\033[93mCurrent Settings:\033[0m")
         # Maps for displaying human-readable values
@@ -482,12 +482,12 @@ class Menu:
                 display_val = str(value)
             print(f"  \033[96m{key:15}\033[0m : {display_val}")
         
-        print("\n\033[96m┌─── OPTIONS ───────────────────────────────────────────────────────┐\033[0m")
-        print("\033[96m│\033[0m  \033[92m[R]\033[0m Run with this configuration                                \033[96m│\033[0m")
-        print("\033[96m│\033[0m  \033[93m[E]\033[0m Edit configuration before running                          \033[96m│\033[0m")
-        print("\033[96m│\033[0m  \033[90m[M]\033[0m Return to main menu                                        \033[96m│\033[0m")
-        print("\033[96m│\033[0m  \033[91m[Q]\033[0m Quit                                                       \033[96m│\033[0m")
-        print("\033[96m└───────────────────────────────────────────────────────────────────┘\033[0m\n")
+        print("\n\033[96m=== OPTIONS ===============================================================\033[0m")
+        print("  \033[92m[R]\033[0m Run with this configuration")
+        print("  \033[93m[E]\033[0m Edit configuration before running")
+        print("  \033[90m[M]\033[0m Return to main menu")
+        print("  \033[91m[Q]\033[0m Quit")
+        print("\033[96m==========================================================================\033[0m\n")
         
         choice = input("\033[96mYour choice [R]:\033[0m ").strip().lower()
         
@@ -691,7 +691,7 @@ class Menu:
         
         # Explicit completion marker
         print("\n" + "="*70)
-        print("\033[92m[✓] Engine execution completed\033[0m")
+        print("\033[92m[OK] Engine execution completed\033[0m")
         print("="*70)
 
 if __name__ == "__main__":
