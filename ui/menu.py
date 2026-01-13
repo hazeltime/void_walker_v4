@@ -168,10 +168,12 @@ class Menu:
             return self.get_input(prompt, key, valid_options, example)
 
         if valid_options:
-            if choice.lower() in valid_options:
+            # Convert valid_options to lowercase for case-insensitive matching
+            valid_options_lower = [opt.lower() for opt in valid_options]
+            if choice.lower() in valid_options_lower:
                 return choice.lower()
             print(f"    \033[91m[!] Invalid. Options: {', '.join(valid_options)}\033[0m")
-            return self.get_input(prompt, key, valid_options)
+            return self.get_input(prompt, key, valid_options, example)
             
         return choice
 
@@ -291,8 +293,10 @@ class Menu:
             print("\n\033[93m2. OPERATION MODE\033[0m")
             print("   [1] Dry Run     : Simulation only (safe, no deletion)")
             print("   [2] Delete Mode : ACTUALLY REMOVES EMPTY FOLDERS ONLY")
-            mode_choice = self.get_input("   Choice [1-2]", "mode", ['1', '2'])
-            mode = 't' if mode_choice == '1' else 'd'
+            mode_choice = self.get_input("   Choice [1-2]", "mode", ['1', '2', 't', 'd'])
+            # Map both numbers and letters to mode
+            mode_map = {'1': 't', '2': 'd', 't': 't', 'd': 'd'}
+            mode = mode_map[mode_choice]
             self.defaults["mode"] = mode
 
             # 3. Hardware
@@ -300,8 +304,8 @@ class Menu:
             print("   [1] Auto (Recommended) - Detects SSD/HDD automatically")
             print("   [2] SSD (Fast)         - 16 threads, BFS strategy")
             print("   [3] HDD (Safe)         - 4 threads, DFS strategy")
-            disk_choice = self.get_input("   Choice [1-3]", "disk", ['1', '2', '3'])
-            disk_map = {'1': 'auto', '2': 'ssd', '3': 'hdd'}
+            disk_choice = self.get_input("   Choice [1-3]", "disk", ['1', '2', '3', 'auto', 'ssd', 'hdd'])
+            disk_map = {'1': 'auto', '2': 'ssd', '3': 'hdd', 'auto': 'auto', 'ssd': 'ssd', 'hdd': 'hdd'}
             disk = disk_map[disk_choice]
             self.defaults["disk"] = disk
 
@@ -310,8 +314,8 @@ class Menu:
             print("   [1] Auto (Recommended) - Match hardware type")
             print("   [2] BFS (Parallel)     - Breadth-first search")
             print("   [3] DFS (Sequential)   - Depth-first search")
-            strategy_choice = self.get_input("   Choice [1-3]", "strategy", ['1', '2', '3'])
-            strategy_map = {'1': 'auto', '2': 'bfs', '3': 'dfs'}
+            strategy_choice = self.get_input("   Choice [1-3]", "strategy", ['1', '2', '3', 'auto', 'bfs', 'dfs'])
+            strategy_map = {'1': 'auto', '2': 'bfs', '3': 'dfs', 'auto': 'auto', 'bfs': 'bfs', 'dfs': 'dfs'}
             strategy = strategy_map[strategy_choice]
             self.defaults["strategy"] = strategy
 
