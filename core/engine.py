@@ -311,11 +311,17 @@ class Engine:
                     for entry in os.scandir(path):
                         size += 1  # Should never execute for truly empty folder
                     
-                    # ASSERTION: If we get here with size > 0, something is wrong
-                    assert size == 0, f"Folder not empty: {path} has {size} items"
-                except AssertionError as e:
-                    self.logger.error(f"Safety check failed: {e}")
-                    with self.lock: self.dashboard.stats['errors'] += 1
+                    # SAFETY CHECK: Explicit validation (not assertion - can't be disabled)
+                    if size > 0:
+                        error_msg = f"Safety check failed: Folder not empty: {path} has {size} items"
+                        self.logger.error(error_msg)
+                        with self.lock: 
+                            self.dashboard.stats['errors'] += 1
+                        continue
+                except OSError as e:
+                    self.logger.error(f"Error verifying folder size {path}: {e}")
+                    with self.lock: 
+                        self.dashboard.stats['errors'] += 1
                     continue
                 
                 # Only proceed if ALL checks pass
