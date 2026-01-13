@@ -214,8 +214,10 @@ def test_unicode_handling():
                         for char in unicode_chars:
                             if char in content:
                                 issues.append((filepath, char))
-                except:
-                    pass
+                except (UnicodeDecodeError, PermissionError, OSError) as e:
+                    # Skip files that can't be read (binary, no permission, etc.)
+                    print(f"  [i] Skipped {filepath}: {type(e).__name__}", file=sys.stderr)
+                    continue
     
     if issues:
         print(f"  ✗ FAIL: Found {len(issues)} Unicode issues:")
