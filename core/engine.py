@@ -24,6 +24,7 @@ class Engine:
         self.queue = deque()
         self.queue_lock = threading.Lock()
         self.lock = threading.Lock()
+        self.state_lock = threading.Lock()  # Protects paused/running flags
         self.paused = False
         self.running = True
         self.executor = None
@@ -189,17 +190,30 @@ class Engine:
         with ThreadPoolExecutor(max_workers=self.config.workers) as executor:
             self.executor = executor
             
-            while self.running:
-                # Handle pause
-                while self.paused and self.running:
+            while True:
+                # Handle pause (with lock protection)
+                with self.state_lock:
+                    if not self.running:
+                        break
+                    is_paused = self.paused
+                
+                while is_paused:
                     self.dashboard.set_status("PAUSED")
                     time.sleep(0.5)
+                    with self.state_lock:
+                        if not self.running:
+                            break
+                        is_paused = self.paused
                 
-                if not self.running:
-                    break
+                with self.state_lock:
+                    if not self.running:
+                        break
                 
                 # Submit work while queue has items and we have capacity
-                while len(futures) < self.config.workers * 2 and self.running:
+                while len(futures) < self.config.workers * 2:
+                    with self.state_lock:
+                        if not self.running:
+                            break
                     item = self._pop_next()
                     if not item:
                         break

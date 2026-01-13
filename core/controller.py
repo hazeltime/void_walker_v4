@@ -53,14 +53,20 @@ class Controller:
                     key = msvcrt.getch().decode('utf-8', errors='ignore').lower()
                     
                     if key == 'p':
-                        self.engine.paused = not self.engine.paused
-                        state = "PAUSED" if self.engine.paused else "RESUMED"
+                        with self.engine.state_lock:
+                            self.engine.paused = not self.engine.paused
+                            state = "PAUSED" if self.engine.paused else "RESUMED"
                         self.engine.logger.info(f"{state} by User")
                         print(f"\n[!] {state}")
                     
                     elif key == 'r':
-                        if self.engine.paused:
-                            self.engine.paused = False
+                        with self.engine.state_lock:
+                            if self.engine.paused:
+                                self.engine.paused = False
+                                do_log = True
+                            else:
+                                do_log = False
+                        if do_log:
                             self.engine.logger.info("Resumed by User")
                             print("\n[!] RESUMED")
                     
@@ -71,19 +77,24 @@ class Controller:
                     
                     elif key == 'q':
                         print("\n[!] Quit requested...")
-                        self.engine.running = False
+                        with self.engine.state_lock:
+                            self.engine.running = False
                     
                     elif key == 'h':
-                        was_paused = self.engine.paused
-                        self.engine.paused = True
+                        with self.engine.state_lock:
+                            was_paused = self.engine.paused
+                            self.engine.paused = True
                         self._show_help()
-                        self.engine.paused = was_paused
+                        with self.engine.state_lock:
+                            self.engine.paused = was_paused
                     
                     elif key == 'c':
-                        was_paused = self.engine.paused
-                        self.engine.paused = True
+                        with self.engine.state_lock:
+                            was_paused = self.engine.paused
+                            self.engine.paused = True
                         self._show_config()
-                        self.engine.paused = was_paused
+                        with self.engine.state_lock:
+                            self.engine.paused = was_paused
                     
                     elif key == 'd':
                         self.engine.dashboard.active = not self.engine.dashboard.active
