@@ -5,6 +5,7 @@ import json
 import time
 from utils.validators import normalize_path
 from common.constants import DEFAULT_MAX_DEPTH
+from ui.components.dialog import Dialog, CheckboxList, WizardStep, InputValidator, Color
 
 class Menu:
     def __init__(self):
@@ -307,138 +308,187 @@ class Menu:
 
     def configure_and_run(self):
             self.print_header()
-            print("\033[96mCONFIGURATION\033[0m (Type 'h' for help anytime)\n")
+            print("\033[96mCONFIGURATION WIZARD\033[0m\n")
             
             # 1. Path
-            print("\033[93m1. TARGET PATH\033[0m")
-            print("   Example: F:\\ or C:\\Users\\Documents")
+            WizardStep.show_breadcrumb(1, 9, "Target Path Selection")
+            print("\033[93mSelect the root directory to scan:\033[0m")
+            print(f"{Color.GRAY}Example: F:\\ or C:\\Users\\Documents{Color.RESET}\n")
+            
+            WizardStep.show_shortcuts(show_previous=False)
+            
             while True:
                 raw = self.get_input("   Path", "path")
-                clean = normalize_path(raw)
-                if os.path.isdir(clean):
+                is_valid, clean, msg = InputValidator.validate_path(raw)
+                InputValidator.show_validation(is_valid, msg)
+                
+                if is_valid:
                     target_path = clean
                     self.defaults["path"] = clean
                     break
-                else:
-                    print(f"    \033[91m[!] Directory not found: {raw}\033[0m")
 
             # 2. Mode
-            print("\n\033[93m2. OPERATION MODE\033[0m")
-            print("   [1] Dry Run     : Simulation only (safe, no deletion)")
-            print("   [2] Delete Mode : ACTUALLY REMOVES EMPTY FOLDERS ONLY")
+            WizardStep.show_breadcrumb(2, 9, "Operation Mode")
+            print("\033[93mChoose operation mode:\033[0m\n")
+            print(f"  {Color.CYAN}[1]{Color.RESET} Dry Run     : {Color.GREEN}Safe preview{Color.RESET} - no files deleted")
+            print(f"  {Color.YELLOW}[2]{Color.RESET} Delete Mode : {Color.RED}ACTUALLY REMOVES{Color.RESET} empty folders\n")
+            print(f"{Color.GRAY}Recommendation: Start with Dry Run to preview results{Color.RESET}\n")
+            
+            WizardStep.show_shortcuts(show_previous=True)
+            
             mode_names = {'1': 'Dry Run', '2': 'Delete'}
             mode_choice = self.get_input("   Choice [1-2]", "mode", ['1', '2'], value_map=mode_names)
             self.defaults["mode"] = mode_choice
 
-            # 3. Hardware
-            print("\n\033[93m3. HARDWARE STRATEGY\033[0m")
-            print("   [1] Auto (Recommended) - Detects SSD/HDD automatically")
-            print("   [2] SSD (Fast)         - 16 threads, BFS strategy")
-            print("   [3] HDD (Safe)         - 4 threads, DFS strategy")
+            # 3. Hardware - with auto-detection info
+            WizardStep.show_breadcrumb(3, 9, "Hardware Strategy")
+            
+            # Try to detect actual hardware
+            detected_hw = "Unknown"
+            try:
+                from config.settings import detect_disk_type
+                disk_type = detect_disk_type(target_path)
+                detected_hw = "SSD" if disk_type == "ssd" else "HDD"
+            except Exception:
+                pass
+            
+            print("\033[93mSelect hardware optimization strategy:\033[0m\n")
+            if detected_hw != "Unknown":
+                print(f"  {Color.GREEN}✓ Detected: {detected_hw}{Color.RESET}\n")
+            
+            print(f"  {Color.CYAN}[1]{Color.RESET} Auto (Recommended) - Auto-detect drive type")
+            if detected_hw == "SSD":
+                print(f"      {Color.GRAY}→ Will use: 16 threads + BFS strategy for your SSD{Color.RESET}")
+            elif detected_hw == "HDD":
+                print(f"      {Color.GRAY}→ Will use: 4 threads + DFS strategy for your HDD{Color.RESET}")
+            
+            print(f"  {Color.CYAN}[2]{Color.RESET} SSD (Fast)         - 16 threads, parallel BFS scan")
+            print(f"      {Color.GRAY}→ Best for: Solid state drives (10-12x faster){Color.RESET}")
+            
+            print(f"  {Color.CYAN}[3]{Color.RESET} HDD (Safe)         - 4 threads, sequential DFS scan")
+            print(f"      {Color.GRAY}→ Best for: Mechanical drives (3-4x faster){Color.RESET}\n")
+            
+            WizardStep.show_shortcuts(show_previous=True)
+            
             disk_names = {'1': 'Auto', '2': 'SSD', '3': 'HDD'}
             disk_choice = self.get_input("   Choice [1-3]", "disk", ['1', '2', '3'], value_map=disk_names)
             self.defaults["disk"] = disk_choice
 
             # 4. Strategy
-            print("\n\033[93m4. SCAN STRATEGY\033[0m")
-            print("   [1] Auto (Recommended) - Match hardware type")
-            print("   [2] BFS (Parallel)     - Breadth-first search")
-            print("   [3] DFS (Sequential)   - Depth-first search")
+            WizardStep.show_breadcrumb(4, 9, "Scan Strategy")
+            print("\033[93mChoose traversal strategy:\033[0m\n")
+            print(f"  {Color.CYAN}[1]{Color.RESET} Auto (Recommended) - Match hardware type")
+            print(f"  {Color.CYAN}[2]{Color.RESET} BFS (Breadth-First)  - Scan level-by-level (parallel)")
+            print(f"      {Color.GRAY}→ Best for: SSDs with many shallow folders{Color.RESET}")
+            print(f"  {Color.CYAN}[3]{Color.RESET} DFS (Depth-First)    - Scan branch-by-branch (sequential)")
+            print(f"      {Color.GRAY}→ Best for: HDDs, deep directory trees{Color.RESET}\n")
+            
+            WizardStep.show_shortcuts(show_previous=True)
+            
             strategy_names = {'1': 'Auto', '2': 'BFS', '3': 'DFS'}
             strategy_choice = self.get_input("   Choice [1-3]", "strategy", ['1', '2', '3'], value_map=strategy_names)
             self.defaults["strategy"] = strategy_choice
 
             # 5. Workers
-            print("\n\033[93m5. THREAD WORKERS\033[0m")
-            print("   [0] Auto (16 for SSD, 4 for HDD)")
-            print("   [1-32] Manual thread count")
-            workers_input = self.get_input("   Count", "workers")
-            try:
-                workers = int(workers_input)
-                if workers < 0 or workers > 32:
-                    print("   \033[91m[!] Using auto (0)\033[0m")
-                    workers = 0
-            except ValueError:
+            WizardStep.show_breadcrumb(5, 9, "Thread Workers")
+            print("\033[93mConfigure concurrent workers:\033[0m\n")
+            print(f"  {Color.CYAN}[0]{Color.RESET} Auto - Automatically select based on hardware")
+            print(f"      {Color.GRAY}→ SSD: 16 workers  |  HDD: 4 workers{Color.RESET}")
+            print(f"  {Color.CYAN}[1-32]{Color.RESET} Manual - Override with specific count\n")
+            print(f"{Color.YELLOW}⚠{Color.RESET} {Color.GRAY}Too many workers can slow down HDDs{Color.RESET}\n")
+            
+            WizardStep.show_shortcuts(show_previous=True)
+            
+            workers_input = self.get_input("   Worker count", "workers")
+            is_valid, workers, msg = InputValidator.validate_number(workers_input, min_val=0, max_val=32)
+            InputValidator.show_validation(is_valid, msg)
+            
+            if not is_valid:
                 workers = 0
+            
             self.defaults["workers"] = workers
 
             # 6. Depth Limits
-            print("\n\033[93m6. DEPTH LIMITS\033[0m")
-            print("   Min Depth: Only delete folders at this depth or deeper")
-            print("   Max Depth: Stop scanning beyond this depth (default: 10,000)")
-            print("   Example: min=2 protects C:\\Program Files\\<folder>")
+            WizardStep.show_breadcrumb(6, 9, "Depth Limits")
+            print("\033[93mSet scanning depth boundaries:\033[0m\n")
+            print(f"  {Color.CYAN}Min Depth{Color.RESET} - Only delete folders at or below this depth")
+            print(f"      {Color.GRAY}Example: min=2 protects C:\\Program Files\\<folder>{Color.RESET}")
+            print(f"  {Color.CYAN}Max Depth{Color.RESET} - Stop scanning beyond this depth")
+            print(f"      {Color.GRAY}Default: 10,000 (essentially unlimited){Color.RESET}\n")
+            
+            WizardStep.show_shortcuts(show_previous=True)
             
             min_depth_input = self.get_input("   Min Depth", "min_depth")
-            try:
-                min_depth = int(min_depth_input)
-                if min_depth < 0: min_depth = 0
-            except ValueError:
+            is_valid, min_depth, msg = InputValidator.validate_number(min_depth_input, min_val=0)
+            InputValidator.show_validation(is_valid, msg)
+            
+            if not is_valid:
                 min_depth = 0
+            
             self.defaults["min_depth"] = min_depth
             
             max_depth_input = self.get_input("   Max Depth", "max_depth")
-            try:
-                max_depth = int(max_depth_input)
-                if max_depth < 1: max_depth = DEFAULT_MAX_DEPTH
-            except ValueError:
+            is_valid, max_depth, msg = InputValidator.validate_number(max_depth_input, min_val=1)
+            InputValidator.show_validation(is_valid, msg)
+            
+            if not is_valid:
                 max_depth = DEFAULT_MAX_DEPTH
+            
             self.defaults["max_depth"] = max_depth
 
             # 7. Windows System Folders Quick Exclusions
             exclude_paths = []  # Initialize exclude_paths
             if os.name == 'nt':
-                print("\n\033[93m7. WINDOWS SYSTEM FOLDERS (Quick Exclusions)\033[0m")
-                print("   Select common folders to automatically exclude:")
+                WizardStep.show_breadcrumb(7, 9, "Windows System Folders Exclusions")
                 
-                windows_defaults = {
-                    "Windows": "*:\\Windows*",
-                    "Program Files": "*:\\Program Files*",
-                    "Program Files (x86)": "*:\\Program Files (x86)*",
-                    "ProgramData": "*:\\ProgramData*",
-                    "Users": "*:\\Users*",
-                    "$RECYCLE.BIN": "*$RECYCLE.BIN*"
-                }
+                windows_defaults = [
+                    ("Windows", "*:\\Windows*"),
+                    ("Program Files", "*:\\Program Files*"),
+                    ("Program Files (x86)", "*:\\Program Files (x86)*"),
+                    ("ProgramData", "*:\\ProgramData*"),
+                    ("Users", "*:\\Users*"),
+                    ("$RECYCLE.BIN", "*$RECYCLE.BIN*")
+                ]
                 
-                print("\n   \033[96m[1]\033[0m All system folders (recommended)")
-                print("   \033[96m[2]\033[0m Custom selection")
-                print("   \033[96m[3]\033[0m None (skip)")
+                print(f"{Color.YELLOW}Select system folders to exclude from scanning:{Color.RESET}")
+                print(f"{Color.GRAY}Recommendation: Exclude all to avoid system interference\n{Color.RESET}")
                 
-                # Default to 3 (None/skip) - stored in defaults if needed
-                default_win = self.defaults.get("windows_exclusions_choice", "3")
-                win_choice = input(f"   Your choice [\033[1;93m{default_win}\033[0m]: ").strip() or default_win
-                self.defaults["windows_exclusions_choice"] = win_choice
+                # Get previously selected indices if available
+                prev_exclusions = self.defaults.get("exclude_paths", [])
+                selected_indices = []
+                for idx, (name, pattern) in enumerate(windows_defaults):
+                    if pattern in prev_exclusions:
+                        selected_indices.append(idx)
                 
-                if win_choice == '1':
-                    # Add all Windows exclusions
-                    for folder_name, pattern in windows_defaults.items():
-                        if pattern not in exclude_paths:
-                            exclude_paths.append(pattern)
-                    print(f"   \033[92m[OK] Added {len(windows_defaults)} Windows system folders to exclusions\033[0m")
-                elif win_choice == '2':
-                    print("\n   \033[90mEnter folder numbers to exclude (e.g., 1,3,5):\033[0m")
-                    for idx, (name, pattern) in enumerate(windows_defaults.items(), 1):
-                        print(f"   \033[96m[{idx}]\033[0m {name:25} ({pattern})")
-                    
-                    selections = input("   Your selections: ").strip()
-                    if selections:
-                        try:
-                            selected_indices = [int(x.strip()) for x in selections.split(',')]
-                            items = list(windows_defaults.items())
-                            for idx in selected_indices:
-                                if 1 <= idx <= len(items):
-                                    pattern = items[idx-1][1]
-                                    if pattern not in exclude_paths:
-                                        exclude_paths.append(pattern)
-                            print(f"   \033[92m[OK] Added {len(selected_indices)} folder(s) to exclusions\033[0m")
-                        except (ValueError, IndexError):
-                            print("   \033[91m[!] Invalid selection, skipping\033[0m")
+                checkbox_list = CheckboxList(
+                    title="Windows System Folders",
+                    items=windows_defaults,
+                    selected_indices=selected_indices if selected_indices else list(range(len(windows_defaults))),  # Default: all selected
+                    description="Use numbers to toggle, [A]ll, [N]one, [Enter] to confirm"
+                )
                 
-                time.sleep(1)
+                WizardStep.show_shortcuts(show_previous=True, show_skip=True)
+                
+                selected_patterns = checkbox_list.show()
+                if selected_patterns is not None:  # Not cancelled
+                    exclude_paths.extend(selected_patterns)
+                    if selected_patterns:
+                        Dialog.show_success(f"Added {len(selected_patterns)} Windows exclusions", pause=False)
+                else:
+                    print(f"{Color.GRAY}[i] Skipped Windows exclusions{Color.RESET}")
+                
+                time.sleep(0.5)
 
             # 8. Additional Filters
-            print("\n\033[93m8. ADDITIONAL FILTERS (comma-separated patterns)\033[0m")
-            print("   Examples: *.tmp*, node_modules, .git")
-            print("   \033[90m(These will be added to any Windows exclusions above)\033[0m")
+            WizardStep.show_breadcrumb(8, 9, "Additional Filters")
+            print("\033[93mAdd custom exclusion patterns:\033[0m\n")
+            print(f"  {Color.CYAN}Exclude Paths{Color.RESET} - Skip paths matching patterns")
+            print(f"  {Color.CYAN}Exclude Names{Color.RESET} - Skip folder names matching patterns")
+            print(f"  {Color.CYAN}Include Names{Color.RESET} - ONLY scan folders matching these patterns\n")
+            print(f"{Color.GRAY}Examples: *.tmp*, node_modules, .git, __pycache__{Color.RESET}")
+            print(f"{Color.GRAY}(Comma-separated, case-insensitive){Color.RESET}\n")
+            
+            WizardStep.show_shortcuts(show_previous=True)
             
             more_exclude_paths = self.get_list_input("   More Exclude Paths", "exclude_paths")
             exclude_paths.extend(more_exclude_paths)
@@ -450,13 +500,40 @@ class Menu:
             include_names = self.get_list_input("   Include Names (leave empty for all)", "include_names")
             self.defaults["include_names"] = include_names
 
-            # 9. Confirm Action
-            print("\n\033[93m9. CONFIRM\033[0m")
-            print("   [1] Run Now         - Start scan immediately")
-            print("   [2] Save & Run      - Save configuration, then run")
-            print("   [3] Back to Menu    - Return to main menu")
-            print("   [4] Quit            - Exit application")
-            action = input("   Choice [1]: ").strip() or '1'
+            # 9. Confirm Action with Summary
+            WizardStep.show_breadcrumb(9, 9, "Configuration Summary & Confirmation")
+            
+            # Show comprehensive configuration summary
+            print(f"{Color.CYAN}╔{'═' * 68}╗{Color.RESET}")
+            print(f"{Color.CYAN}║{Color.RESET} {Color.YELLOW}{'CONFIGURATION SUMMARY':^66}{Color.RESET} {Color.CYAN}║{Color.RESET}")
+            print(f"{Color.CYAN}╠{'═' * 68}╣{Color.RESET}")
+            
+            # Display all configured settings
+            config_display = [
+                ("Target Path", target_path),
+                ("Operation Mode", mode_names.get(mode_choice, mode_choice)),
+                ("Hardware Strategy", disk_names.get(disk_choice, disk_choice)),
+                ("Scan Strategy", strategy_names.get(strategy_choice, strategy_choice)),
+                ("Workers", f"{workers} (Auto)" if workers == 0 else str(workers)),
+                ("Min Depth", str(min_depth)),
+                ("Max Depth", str(max_depth)),
+                ("Exclude Paths", f"{len(exclude_paths)} patterns" if exclude_paths else "None"),
+                ("Exclude Names", ", ".join(exclude_names) if exclude_names else "None"),
+                ("Include Names", ", ".join(include_names) if include_names else "All folders"),
+            ]
+            
+            for label, value in config_display:
+                print(f"{Color.CYAN}║{Color.RESET} {Color.GRAY}{label:20}{Color.RESET} : {Color.WHITE}{value:40}{Color.RESET} {Color.CYAN}║{Color.RESET}")
+            
+            print(f"{Color.CYAN}╠{'═' * 68}╣{Color.RESET}")
+            print(f"{Color.CYAN}║{Color.RESET} {Color.YELLOW}{'ACTION REQUIRED':^66}{Color.RESET} {Color.CYAN}║{Color.RESET}")
+            print(f"{Color.CYAN}║{Color.RESET}   {Color.GREEN}[1] Run Now{Color.RESET}        - Start scan immediately {'':26} {Color.CYAN}║{Color.RESET}")
+            print(f"{Color.CYAN}║{Color.RESET}   {Color.CYAN}[2] Save & Run{Color.RESET}     - Save configuration, then run {'':20} {Color.CYAN}║{Color.RESET}")
+            print(f"{Color.CYAN}║{Color.RESET}   {Color.YELLOW}[3] Back to Menu{Color.RESET}   - Return without running {'':24} {Color.CYAN}║{Color.RESET}")
+            print(f"{Color.CYAN}║{Color.RESET}   {Color.RED}[4] Quit{Color.RESET}           - Exit application {'':30} {Color.CYAN}║{Color.RESET}")
+            print(f"{Color.CYAN}╚{'═' * 68}╝{Color.RESET}\n")
+            
+            action = input(f"{Color.CYAN}Your choice [1]:{Color.RESET} ").strip() or '1'
 
             if action == '2':
                 self.save_config()
