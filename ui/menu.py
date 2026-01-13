@@ -4,6 +4,7 @@ import subprocess
 import json
 import time
 from utils.validators import normalize_path
+from common.constants import DEFAULT_MAX_DEPTH
 
 class Menu:
     def __init__(self):
@@ -23,7 +24,7 @@ class Menu:
             "strategy": "1",
             "workers": 0,
             "min_depth": 0,
-            "max_depth": 10000,
+            "max_depth": DEFAULT_MAX_DEPTH,
             "exclude_paths": [],
             "exclude_names": [],
             "include_names": [],
@@ -370,9 +371,9 @@ class Menu:
             max_depth_input = self.get_input("   Max Depth", "max_depth")
             try:
                 max_depth = int(max_depth_input)
-                if max_depth < 1: max_depth = 10000
+                if max_depth < 1: max_depth = DEFAULT_MAX_DEPTH
             except ValueError:
-                max_depth = 10000
+                max_depth = DEFAULT_MAX_DEPTH
             self.defaults["max_depth"] = max_depth
 
             # 7. Windows System Folders Quick Exclusions
@@ -523,7 +524,7 @@ class Menu:
             strategy = self.defaults.get("strategy", "1")
             workers = self.defaults.get("workers", 0)
             min_depth = self.defaults.get("min_depth", 0)
-            max_depth = self.defaults.get("max_depth", 10000)
+            max_depth = self.defaults.get("max_depth", DEFAULT_MAX_DEPTH)
             exclude_paths = self.defaults.get("exclude_paths", [])
             exclude_names = self.defaults.get("exclude_names", [])
             include_names = self.defaults.get("include_names", [])
@@ -680,7 +681,7 @@ class Menu:
         # Depth
         if min_depth > 0:
             cmd.extend(["--min-depth", str(min_depth)])
-        if max_depth != 10000:
+        if max_depth != DEFAULT_MAX_DEPTH:
             cmd.extend(["--max-depth", str(max_depth)])
         
         # Filters

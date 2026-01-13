@@ -8,6 +8,8 @@ from datetime import datetime
 # Ensure local imports work
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from common.constants import DEFAULT_MAX_DEPTH
+
 from config.settings import Config
 from core.engine import Engine
 from ui.menu import Menu
@@ -101,7 +103,7 @@ def main():
     
     # Filters & Depth
     parser.add_argument("--min-depth", type=int, default=0, help="Minimum depth to start deleting")
-    parser.add_argument("--max-depth", type=int, default=10000, help="Maximum depth to traverse (default: 10,000)")
+    parser.add_argument("--max-depth", type=int, default=DEFAULT_MAX_DEPTH, help=f"Maximum depth to traverse (default: {DEFAULT_MAX_DEPTH:,})")
     parser.add_argument("--exclude-path", nargs='*', default=[], help="Glob patterns for full paths to exclude (e.g. *System32*)")
     parser.add_argument("--exclude-name", nargs='*', default=[], help="Glob patterns for folder names to exclude (e.g. .git node_modules)")
     parser.add_argument("--include-name", nargs='*', default=[], help="Strictly include ONLY these folder names")

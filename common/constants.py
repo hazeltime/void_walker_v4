@@ -78,8 +78,8 @@ QUEUE_BATCH_SIZE = 2  # Multiple of workers for queue processing
 # DEPTH LIMITS
 # =============================================================================
 DEFAULT_MIN_DEPTH = 0
-DEFAULT_MAX_DEPTH = 100
-ABSOLUTE_MAX_DEPTH = 1000  # Safety limit
+DEFAULT_MAX_DEPTH = 10000  # Default maximum traversal depth
+ABSOLUTE_MAX_DEPTH = 100000  # Safety limit for extreme cases
 
 
 # =============================================================================
