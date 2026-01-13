@@ -1,10 +1,13 @@
 # VoidWalker v4 - Performance Optimization Report
+
 **Date:** January 13, 2026  
 **Commit:** 51cc34d  
 **Branch:** main
 
 ## Executive Summary
+
 Implemented 4 major optimizations resulting in:
+
 - **50% reduction in filesystem I/O operations**
 - **60% reduction in CPU polling overhead**
 - **Improved user experience** with ETA display
@@ -15,23 +18,28 @@ Implemented 4 major optimizations resulting in:
 ## 1. Engine I/O Optimization (50% Syscall Reduction)
 
 ### Problem
+
 `core/engine.py` method `_scan_folder()` called `os.scandir(path)` **twice**:
+
 1. First pass: Calculate folder size for metrics (lines 303-312)
 2. Second pass: Process folder contents and enqueue subdirectories (lines 314-335)
 
 ### Impact
+
 - Every folder scanned **twice**
 - For deep hierarchies with thousands of folders, this doubled I/O load
 - Unnecessary syscall overhead
 
 ### Solution
+
 Merged both operations into **single `os.scandir()` pass**:
+
 ```python
 # OPTIMIZED: Single os.scandir pass for both size and scanning
 with os.scandir(path) as it:
     entry_count = 0
     folder_size = 0
-    
+
     for entry in it:
         # Calculate size for metrics (for files only)
         try:
@@ -39,15 +47,16 @@ with os.scandir(path) as it:
                 folder_size += entry.stat(follow_symlinks=False).st_size
         except (OSError, PermissionError):
             pass  # Skip inaccessible files for size calc
-        
+
         # Continue with folder scanning logic
         # (process files, enqueue subdirectories, handle errors)
-    
+
     # Update dashboard with folder size after scanning complete
     self.dashboard.add_processed_size(folder_size)
 ```
 
 ### Results
+
 - **~50% fewer `os.scandir()` calls**
 - Faster scanning, especially for deep folder structures
 - Same functionality, better performance
@@ -58,18 +67,23 @@ with os.scandir(path) as it:
 ## 2. Controller CPU Optimization (60% CPU Reduction)
 
 ### Problem
+
 `core/controller.py` keyboard polling used `time.sleep(0.1)`:
+
 - Checked for keypresses every 100ms
 - Unnecessary CPU usage during long scans
 - 10 checks per second for keys rarely pressed
 
 ### Solution
+
 Increased sleep interval to `0.25s`:
+
 ```python
 time.sleep(0.25)  # Optimized: 60% less CPU vs 0.1s, no UX degradation
 ```
 
 ### Results
+
 - **60% reduction** in polling loop iterations
 - Lower CPU usage (from ~10/sec to ~4/sec)
 - **No UX impact** - 250ms response time still feels instant
@@ -80,13 +94,16 @@ time.sleep(0.25)  # Optimized: 60% less CPU vs 0.1s, no UX degradation
 ## 3. Database Code Quality (40 Lines Eliminated)
 
 ### Problem
+
 4 database methods had **duplicate error handling**:
+
 - `update_folder_stats()`
 - `log_error()`
 - `mark_deleted()`
 - `mark_would_delete()`
 
 Each had identical try/except blocks:
+
 ```python
 try:
     with self.lock:
@@ -98,7 +115,9 @@ except Exception as e:
 ```
 
 ### Solution
+
 Refactored to use existing `_execute_safe()` pattern:
+
 ```python
 def update_folder_stats(self, path, file_count):
     def execute():
@@ -111,6 +130,7 @@ def update_folder_stats(self, path, file_count):
 ```
 
 ### Results
+
 - **~40 lines of code eliminated**
 - Consistent error handling across all DB operations
 - DRY principle applied
@@ -121,12 +141,16 @@ def update_folder_stats(self, path, file_count):
 ## 4. Dashboard ETA Feature (UX Enhancement)
 
 ### Problem
+
 Users had **no visibility** into how long scans would take:
+
 - Long scans appeared to hang
 - No progress estimation beyond folder count
 
 ### Solution
+
 Added **ETA calculation** based on queue depth and scan rate:
+
 ```python
 # Calculate ETA based on queue depth and scan rate
 eta_str = "--:--:--"
@@ -139,6 +163,7 @@ line4 = f"Size: {size_str} | Speed: {speed_str} | ETA: {eta_str} | " + progress_
 ```
 
 ### Results
+
 - Users can **estimate completion time**
 - Format: `ETA: 0:05:23` (hours:minutes:seconds)
 - Better user experience for long-running scans
@@ -149,6 +174,7 @@ line4 = f"Size: {size_str} | Speed: {speed_str} | ETA: {eta_str} | " + progress_
 ## Testing & Validation
 
 ### Test Results
+
 - **91 out of 92 tests passing** (99.9% pass rate)
 - 1 pre-existing failure in `test_resume_mode` (unrelated to optimizations)
 - All optimization changes tested:
@@ -158,6 +184,7 @@ line4 = f"Size: {size_str} | Speed: {speed_str} | ETA: {eta_str} | " + progress_
   - Controller responsiveness tested
 
 ### Files Modified
+
 - `core/engine.py`: 25 lines changed (11 additions, 14 deletions)
 - `data/database.py`: 28 lines changed (8 additions, 20 deletions)
 - `ui/dashboard.py`: 11 lines changed (9 additions, 2 deletions)
@@ -169,18 +196,19 @@ line4 = f"Size: {size_str} | Speed: {speed_str} | ETA: {eta_str} | " + progress_
 
 ## Performance Metrics Summary
 
-| Optimization | Metric | Before | After | Improvement |
-|-------------|--------|--------|-------|-------------|
-| Engine I/O | `os.scandir()` calls | 2 per folder | 1 per folder | **50% reduction** |
-| Controller CPU | Polling frequency | 10/sec | 4/sec | **60% reduction** |
-| Database Code | Lines of duplicate code | ~40 lines | 0 lines | **100% elimination** |
-| Dashboard UX | ETA display | None | Hours:Min:Sec | **New feature** |
+| Optimization   | Metric                  | Before       | After         | Improvement          |
+| -------------- | ----------------------- | ------------ | ------------- | -------------------- |
+| Engine I/O     | `os.scandir()` calls    | 2 per folder | 1 per folder  | **50% reduction**    |
+| Controller CPU | Polling frequency       | 10/sec       | 4/sec         | **60% reduction**    |
+| Database Code  | Lines of duplicate code | ~40 lines    | 0 lines       | **100% elimination** |
+| Dashboard UX   | ETA display             | None         | Hours:Min:Sec | **New feature**      |
 
 ---
 
 ## Recommendations for Future Optimizations
 
 ### High Priority
+
 1. **Batch Database Inserts** (Not Implemented)
    - Currently adds folders one-by-one
    - Could batch INSERT for folders in same parent
@@ -188,7 +216,9 @@ line4 = f"Size: {size_str} | Speed: {speed_str} | ETA: {eta_str} | " + progress_
    - Complexity: Medium (transaction handling)
 
 ### Medium Priority
+
 2. **Additional Type Hints**
+
    - Limited coverage (only 4 files)
    - Would improve IDE support and static analysis
    - Low risk, high maintainability gain
@@ -199,6 +229,7 @@ line4 = f"Size: {size_str} | Speed: {speed_str} | ETA: {eta_str} | " + progress_
    - Complexity: Low-Medium
 
 ### Low Priority
+
 4. **Cross-Platform Controller**
    - Currently Windows-only (msvcrt)
    - Could use `keyboard` library for cross-platform
@@ -207,7 +238,9 @@ line4 = f"Size: {size_str} | Speed: {speed_str} | ETA: {eta_str} | " + progress_
 ---
 
 ## Conclusion
+
 This optimization pass delivered significant performance improvements with **minimal risk**:
+
 - **No breaking changes**
 - **No test regressions**
 - **Improved code quality**
@@ -218,6 +251,7 @@ All changes are production-ready and backward-compatible.
 ---
 
 ## Commit Details
+
 - **Commit:** 51cc34d
 - **Author:** VoidWalker Team
 - **Date:** January 13, 2026
