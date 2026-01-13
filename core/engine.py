@@ -223,16 +223,20 @@ class Engine:
                     with self.lock:
                         self.dashboard.stats['queue_depth'] = self._queue_size()
                 
-                # Process completed futures
+                # Process completed futures (optimized to O(n) instead of O(n²))
                 if futures:
                     done = [f for f in futures if f.done()]
-                    for future in done:
-                        futures.remove(future)
-                        items_processed += 1
-                        try:
-                            future.result()  # Raises exception if worker failed
-                        except Exception as e:
-                            self.logger.error(f"Worker error: {e}")
+                    if done:
+                        # Rebuild futures list without completed ones (O(n) instead of O(n²))
+                        futures = [f for f in futures if not f.done()]
+                        items_processed += len(done)
+                        
+                        # Check results for exceptions
+                        for future in done:
+                            try:
+                                future.result()  # Raises exception if worker failed
+                            except Exception as e:
+                                self.logger.error(f"Worker error: {e}")
                     
                     # Periodic commits for resume capability
                     if time.time() - self.last_commit_time >= self.commit_interval:
