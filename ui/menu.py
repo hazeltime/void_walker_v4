@@ -586,10 +586,6 @@ class Menu:
         print(f"\033[96m{sep}\033[0m\n")
         input("Press Enter to continue...")
 
-    def load_and_apply_config(self):
-        """Deprecated - use load_and_run instead"""
-        self.load_and_run()
-
     def show_cache(self):
         """Display cache status"""
         cmd = [sys.executable, "main.py", "--show-cache"]

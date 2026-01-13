@@ -28,14 +28,6 @@ logs/*.log
 last_run_config.json
 void_walker_config.json
 
-# Documentation (AI-generated, keep in docs/)
-docs/BEFORE_AFTER.md
-docs/CHECKLIST.md
-docs/DEPLOYMENT_REPORT.md
-docs/FIXES_SUMMARY.md
-docs/IMPLEMENTATION_SUMMARY.md
-docs/QUICK_REFERENCE.md
-
 # OS
 .DS_Store
 Thumbs.db
@@ -47,7 +39,10 @@ desktop.ini
 htmlcov/
 *.cover
 .hypothesis/
+test_scan_temp/
 
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*.backup
