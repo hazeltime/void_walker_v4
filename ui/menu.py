@@ -83,14 +83,15 @@ class Menu:
         print("    | | | |__| |_| |_| |__| |    \\  /\\  / ____ \\ |____| . \\| |____| | \\ \\ ")
         print("    |_|  \\____/|_____|_____/      \\/  \\/_/    \\_\\______|_|\\_\\______|_|  \\_\\")
         print("="*70)
-        print("  \033[93mVersion 4.1.1\033[0m | Enterprise Empty Folder Detection & Cleanup Tool")
+        print("  \033[93mVersion 4.1.2\033[0m | Enterprise Empty Folder Detection & Cleanup Tool")
         print("  \033[90mOptimized for SSD/HDD with concurrent scanning & intelligent filtering\033[0m")
+        print("  \033[90mCopyright © 2026 - Released January 2026\033[0m")
         print("="*70 + "\033[0m\n")
 
     def print_header(self):
         self.clear()
         print("\033[96m" + "="*70)
-        print("  VOID WALKER v4.1.1 - ENTERPRISE CONSOLE")
+        print("  VOID WALKER v4.1.2 - ENTERPRISE CONSOLE")
         print("="*70 + "\033[0m")
 
     def print_help(self):
@@ -281,8 +282,9 @@ class Menu:
         self.print_header()
         print("\n\033[96m=== ABOUT VOID WALKER =====================================================\033[0m")
         print("")
-        print("  \033[93mVersion:\033[0m 4.1.1")
+        print("  \033[93mVersion:\033[0m 4.1.2")
         print("  \033[93mRelease Date:\033[0m January 2026")
+        print("  \033[93mCopyright:\033[0m © 2026")
         print("  \033[93mRepository:\033[0m github.com/hazeltime/void_walker_v4")
         print("")
         print("  \033[92mKEY FEATURES:\033[0m                                                    ")

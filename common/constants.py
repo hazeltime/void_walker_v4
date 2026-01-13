@@ -9,11 +9,12 @@ from enum import Enum
 # VERSION AND METADATA
 # =============================================================================
 APP_NAME = "VOID WALKER"
-APP_VERSION = "4.1.1"
+APP_VERSION = "4.1.2"
 APP_DESCRIPTION = "Enterprise Empty Folder Detection & Cleanup Tool"
 APP_TAGLINE = "Optimized for SSD/HDD with concurrent scanning & intelligent filtering"
 REPOSITORY_URL = "github.com/hazeltime/void_walker_v4"
 RELEASE_DATE = "January 2026"
+COPYRIGHT_YEAR = "2026"
 
 
 # =============================================================================
@@ -48,6 +49,17 @@ class FolderStatus(Enum):
     WOULD_DELETE = "WOULD_DELETE"
 
 
+class DashboardStatus(Enum):
+    """Real-time dashboard status messages"""
+    STARTING = "STARTING"
+    INIT = "INIT"
+    SCANNING = "SCANNING"
+    CLEANUP = "CLEANUP"
+    PAUSED = "PAUSED"
+    SAVED = "SAVED"
+    COMPLETE = "COMPLETE"
+
+
 class EnginePhase(Enum):
     """Current execution phase"""
     INIT = "INIT"
@@ -62,6 +74,14 @@ class EnginePhase(Enum):
 DEFAULT_DB_PATH = "void_walker_history.db"
 DB_COMMIT_INTERVAL = 10  # seconds between automatic commits
 DB_WAL_MODE = True
+
+
+# =============================================================================
+# DASHBOARD CONFIGURATION  
+# =============================================================================
+DASHBOARD_UPDATE_FPS = 5  # Frames per second (updates/sec)
+DASHBOARD_UPDATE_INTERVAL = 0.2  # Seconds between refreshes (1/FPS)
+DASHBOARD_SPINNER_CHARS = ["|", "/", "-", "\\"]
 
 
 # =============================================================================

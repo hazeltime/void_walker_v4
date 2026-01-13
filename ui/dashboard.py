@@ -3,19 +3,27 @@ import shutil
 import time
 import threading
 from datetime import timedelta
+from common.constants import (
+    DASHBOARD_UPDATE_INTERVAL,
+    DASHBOARD_SPINNER_CHARS
+)
 
 class Dashboard:
-    # Display constants
-    SPINNER_CHARS = ["|", "/", "-", "\\"]
+    # Display constants (moved to constants.py)
     DEFAULT_TERMINAL_WIDTH = 120
     MIN_PATH_LENGTH = 40
     DASHBOARD_LINES = 4  # Number of lines used by dashboard display
-    UPDATE_INTERVAL = 0.2  # Seconds between dashboard refreshes
     
     def __init__(self, config):
+        """Initialize real-time dashboard with thread-safe metrics.
+        
+        Args:
+            config: Application configuration object with settings
+        """
         self.config = config
         self.active = False
-        self.lock = threading.Lock()
+        # Use RLock (reentrant lock) to prevent deadlocks when methods call each other
+        self.lock = threading.RLock()
         self.current_path = "Initializing..."
         self.status = "STARTING"
         self.phase = "INIT"
@@ -31,9 +39,12 @@ class Dashboard:
             "active_workers": 0,
             "total_size_bytes": 0,  # Total bytes processed
             "processing_speed_bps": 0.0,  # Bytes per second
-            "eta_seconds": 0  # Estimated time remaining
+            "eta_seconds": 0,  # Estimated time remaining
+            "memory_mb": 0.0,  # Current memory usage in MB
         }
         self.start_time = time.time()
+        self.rate_samples = []  # For rolling average calculation
+        self.max_rate_samples = 10  # Keep last 10 samples
 
     def start(self):
         self.active = True
@@ -67,12 +78,21 @@ class Dashboard:
             self.phase = phase
     
     def increment_scanned(self, scan_start_time):
-        """Thread-safe increment of scanned counter with rate calculation"""
+        """Thread-safe increment of scanned counter with rolling average rate calculation."""
         with self.lock:
             self.stats['scanned'] += 1
             elapsed = time.time() - scan_start_time
             if elapsed > 0:
-                self.stats['scan_rate'] = self.stats['scanned'] / elapsed
+                # Calculate instantaneous rate
+                instant_rate = self.stats['scanned'] / elapsed
+                
+                # Add to rolling samples
+                self.rate_samples.append(instant_rate)
+                if len(self.rate_samples) > self.max_rate_samples:
+                    self.rate_samples.pop(0)
+                
+                # Use rolling average for smoother display
+                self.stats['scan_rate'] = sum(self.rate_samples) / len(self.rate_samples)
     
     def increment_empty(self):
         """Thread-safe increment of empty folder counter"""
@@ -117,7 +137,7 @@ class Dashboard:
                 except OSError:
                     cols = self.DEFAULT_TERMINAL_WIDTH
             
-            s = self.SPINNER_CHARS[i % len(self.SPINNER_CHARS)]
+            s = DASHBOARD_SPINNER_CHARS[i % len(DASHBOARD_SPINNER_CHARS)]
             
             with self.lock:
                 path = self.current_path
@@ -129,6 +149,17 @@ class Dashboard:
                 deleted = self.stats.get('deleted', 0)
                 total_bytes = self.stats.get('total_size_bytes', 0)
                 speed_bps = self.stats.get('processing_speed_bps', 0)
+                memory_mb = self.stats.get('memory_mb', 0.0)
+            
+            # Update memory usage if psutil available
+            if memory_mb == 0.0:
+                try:
+                    import psutil
+                    import os
+                    process = psutil.Process(os.getpid())
+                    memory_mb = process.memory_info().rss / 1024 / 1024
+                except Exception:
+                    pass  # psutil not available or error
             
             # Truncate path if too long
             max_path_len = max(self.MIN_PATH_LENGTH, cols - 20)
@@ -160,7 +191,8 @@ class Dashboard:
                 eta_str = str(timedelta(seconds=eta_seconds))
             
             # Build output lines
-            line1 = f"[{s}] {self.phase} | {self.status} | Workers: {self.config.workers}"
+            mem_str = f"{memory_mb:.1f}MB" if memory_mb > 0 else "N/A"
+            line1 = f"[{s}] {self.phase} | {self.status} | Workers: {self.config.workers} | Mem: {mem_str}"
             line2 = f"{path}"
             line3 = f"Scanned: {scanned} | Rate: {rate:.1f}/s | Queue: {queue} | Empty: {empty} | Deleted: {deleted} | Errors: {errors} | Time: {elapsed_str}"
             line4 = f"Size: {size_str} | Speed: {speed_str} | ETA: {eta_str} | " + "-" * max(0, min(60, cols) - 50)
@@ -181,7 +213,7 @@ class Dashboard:
             sys.stdout.flush()
             
             i += 1
-            time.sleep(self.UPDATE_INTERVAL)
+            time.sleep(DASHBOARD_UPDATE_INTERVAL)
         
         # Final newline for clean exit
         sys.stdout.write("\n")

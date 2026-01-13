@@ -4,6 +4,7 @@ import platform
 import subprocess
 import sys
 from datetime import datetime
+from utils.validators import normalize_path
 
 class Config:
     def __init__(self, args):
@@ -69,11 +70,7 @@ class Config:
         # Normal mode - create new session
         # Normalize path: handle drive letters, relative paths, etc.
         if args.path:
-            path = args.path.strip()
-            # Handle drive letter without trailing slash (F: -> F:\\)
-            if len(path) == 2 and path[1] == ':':
-                path = path + '\\\\'
-            self.root_path = os.path.abspath(path)
+            self.root_path = normalize_path(args.path)
         else:
             self.root_path = None
         

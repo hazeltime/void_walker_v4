@@ -64,12 +64,8 @@ class Controller:
                         with self.engine.state_lock:
                             if self.engine.paused:
                                 self.engine.paused = False
-                                do_log = True
-                            else:
-                                do_log = False
-                        if do_log:
-                            self.engine.logger.info("Resumed by User")
-                            print("\n[!] RESUMED")
+                                self.engine.logger.info("Resumed by User")
+                                print("\n[!] RESUMED")
                     
                     elif key == 's':
                         print("\n[!] Saving state...")

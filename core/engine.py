@@ -18,8 +18,20 @@ from common.constants import (
     ENGINE_WORKER_CAPACITY_MULTIPLIER,
     ENGINE_QUEUE_POLL_SLEEP
 )
+import signal
 
 class Engine:
+    """Main scanning engine with concurrent folder traversal.
+    
+    Attributes:
+        config: Application configuration (paths, filters, workers, etc.)
+        logger: Logging instance for this session
+        db: SQLite database for persistence and resume capability
+        dashboard: Real-time display of scan progress
+        controller: Keyboard input handler for runtime controls
+        queue: Thread-safe deque for pending folders
+        executor: ThreadPoolExecutor for concurrent worker management
+    """
     
     def __init__(self, config, logger):
         self.config = config
@@ -41,13 +53,26 @@ class Engine:
         self.total_errors = 0
         self.total_deleted = 0
         
-        # Use constants from common.constants
-        self.commit_interval = ENGINE_COMMIT_INTERVAL
+        # Use configurable intervals with fallback to constants
+        self.commit_interval = getattr(config, 'commit_interval', ENGINE_COMMIT_INTERVAL)
         self.progress_update_interval = ENGINE_PROGRESS_UPDATE_INTERVAL
         self.worker_capacity_multiplier = ENGINE_WORKER_CAPACITY_MULTIPLIER
         self.queue_poll_sleep = ENGINE_QUEUE_POLL_SLEEP
 
     def start(self):
+        # Register signal handlers for graceful shutdown
+        def signal_handler(signum, frame):
+            print("\n\033[93m[!] Interrupt received, saving state...\033[0m", flush=True)
+            self.save_state()
+            with self.state_lock:
+                self.running = False
+            print("\033[92m[OK] State saved. Exiting gracefully.\033[0m")
+            sys.exit(0)
+        
+        signal.signal(signal.SIGINT, signal_handler)
+        if hasattr(signal, 'SIGTERM'):
+            signal.signal(signal.SIGTERM, signal_handler)
+        
         print("\n\033[96m[*] Initializing Void Walker...\033[0m")
         print("\033[90m    > Setting up database...\033[0m")
         self.db.setup()
@@ -98,6 +123,12 @@ class Engine:
         # Stop dashboard AFTER all work is done
         self.dashboard.stop()
         self.controller.stop()
+        
+        # Ensure database is properly closed
+        try:
+            self.db.close()
+        except Exception as e:
+            self.logger.error(f"Error closing database: {e}")
     
     def scan_only(self):
         """Phase 1: Scanning only - does not perform cleanup"""
@@ -292,6 +323,17 @@ class Engine:
         self.logger.info(f"Session completed successfully")
 
     def _scan_folder(self, path, depth):
+        """Scan a single folder and enqueue subdirectories.
+        
+        Args:
+            path: Absolute path to folder
+            depth: Current traversal depth
+            
+        Notes:
+            - Skips symlinks and junctions to prevent infinite loops
+            - Updates database with scan results
+            - Thread-safe: called by multiple workers concurrently
+        """
         try:
             # Check for Junctions/Reparse Points (WinError 1920 cause)
             try:
