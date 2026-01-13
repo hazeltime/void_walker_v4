@@ -36,11 +36,13 @@ class Dashboard:
             self.thread.join(timeout=1.0)
             # Verify thread actually stopped
             if self.thread.is_alive():
-                import sys
                 print("\n[!] Warning: Dashboard thread did not stop cleanly", file=sys.stderr)
                 # Thread will be terminated when program exits (daemon=True)
-        # Clear dashboard area and move cursor down
-        print("\n" * 5, end="", flush=True)
+        # Clear dashboard area - move cursor to start of dashboard lines and clear
+        sys.stdout.write("\033[4A")  # Move up 4 lines
+        sys.stdout.write("\033[J")   # Clear from cursor to end
+        sys.stdout.write("\n")       # Add newline for clean separation
+        sys.stdout.flush()
     def update_current(self, path):
         with self.lock:
             self.current_path = path
@@ -52,6 +54,34 @@ class Dashboard:
     def set_phase(self, phase):
         with self.lock:
             self.phase = phase
+    
+    def increment_scanned(self, scan_start_time):
+        """Thread-safe increment of scanned counter with rate calculation"""
+        with self.lock:
+            self.stats['scanned'] += 1
+            elapsed = time.time() - scan_start_time
+            if elapsed > 0:
+                self.stats['scan_rate'] = self.stats['scanned'] / elapsed
+    
+    def increment_empty(self):
+        """Thread-safe increment of empty folder counter"""
+        with self.lock:
+            self.stats['empty'] += 1
+    
+    def increment_errors(self):
+        """Thread-safe increment of error counter"""
+        with self.lock:
+            self.stats['errors'] += 1
+    
+    def increment_deleted(self):
+        """Thread-safe increment of deleted counter"""
+        with self.lock:
+            self.stats['deleted'] += 1
+    
+    def set_queue_depth(self, depth):
+        """Thread-safe update of queue depth"""
+        with self.lock:
+            self.stats['queue_depth'] = depth
 
     def _loop(self):
         spin = ["|", "/", "-", "\\"]

@@ -215,8 +215,7 @@ class Engine:
                     path, depth = item
                     future = executor.submit(self._scan_folder, path, depth)
                     futures.append(future)
-                    with self.lock:
-                        self.dashboard.stats['queue_depth'] = self._queue_size()
+                    self.dashboard.set_queue_depth(self._queue_size())
                 
                 # Process completed futures (optimized to O(n) instead of O(n²))
                 if futures:
@@ -280,9 +279,8 @@ class Engine:
                 self.logger.debug(f"Error checking symlink status for {path}: {e}")
 
             queue_depth = self._queue_size()
-            with self.lock:
-                self.dashboard.update_current(path)
-                self.dashboard.stats['queue_depth'] = queue_depth
+            self.dashboard.update_current(path)
+            self.dashboard.set_queue_depth(queue_depth)
 
             with os.scandir(path) as it:
                 entry_count = 0
@@ -298,45 +296,40 @@ class Engine:
                             entry_count += 1
                             if not self._is_filtered(entry.path, entry.name, depth + 1):
                                 queue_depth = self._enqueue(entry.path, depth + 1)
-                                with self.lock:
-                                    self.dashboard.stats['queue_depth'] = queue_depth
+                                self.dashboard.set_queue_depth(queue_depth)
                                 self.db.add_folder(entry.path, depth + 1)
                     except PermissionError:
                         self.db.log_error(entry.path, "Access Denied")
+                        self.dashboard.increment_errors()
                         with self.lock:
-                            self.dashboard.stats['errors'] += 1
                             self.total_errors += 1
                     except OSError as e:
                         self.db.log_error(entry.path, str(e))
+                        self.dashboard.increment_errors()
                         with self.lock:
-                            self.dashboard.stats['errors'] += 1
                             self.total_errors += 1
                 
                 self.db.update_folder_stats(path, entry_count)
                 
                 # Track if this folder is empty (no files, no folders)
                 if entry_count == 0:
+                    self.dashboard.increment_empty()
                     with self.lock:
                         self.total_empty += 1
-                        self.dashboard.stats['empty'] = self.total_empty
                 
+                self.dashboard.increment_scanned(self.scan_start_time)
                 with self.lock:
-                    self.dashboard.stats['scanned'] += 1
                     self.total_scanned += 1
-                    # Update scan rate
-                    elapsed = time.time() - self.scan_start_time
-                    if elapsed > 0:
-                        self.dashboard.stats['scan_rate'] = self.total_scanned / elapsed
                 
         except PermissionError:
             self.db.log_error(path, "Access Denied")
+            self.dashboard.increment_errors()
             with self.lock:
-                self.dashboard.stats['errors'] += 1
                 self.total_errors += 1
         except OSError as e:
             self.db.log_error(path, str(e))
+            self.dashboard.increment_errors()
             with self.lock:
-                self.dashboard.stats['errors'] += 1
                 self.total_errors += 1
 
     def save_state(self):
@@ -391,13 +384,11 @@ class Engine:
                     if size > 0:
                         error_msg = f"Safety check failed: Folder not empty: {path} has {size} items"
                         self.logger.error(error_msg)
-                        with self.lock: 
-                            self.dashboard.stats['errors'] += 1
+                        self.dashboard.increment_errors()
                         continue
                 except OSError as e:
                     self.logger.error(f"Error verifying folder size {path}: {e}")
-                    with self.lock: 
-                        self.dashboard.stats['errors'] += 1
+                    self.dashboard.increment_errors()
                     continue
                 
                 # Only proceed if ALL checks pass
@@ -405,8 +396,8 @@ class Engine:
                     # PRODUCTION: Delete only after all safety checks pass
                     os.rmdir(path)  # Will raise OSError if not truly empty
                     self.db.mark_deleted(path)
-                    with self.lock: 
-                        self.dashboard.stats['deleted'] += 1
+                    self.dashboard.increment_deleted()
+                    with self.lock:
                         self.total_deleted += 1
                     processed += 1
                     if processed % 10 == 0:
@@ -414,8 +405,8 @@ class Engine:
                 else:
                     # DRY RUN: Mark and count
                     self.db.mark_would_delete(path)
-                    with self.lock: 
-                        self.dashboard.stats['empty'] += 1
+                    self.dashboard.increment_empty()
+                    with self.lock:
                         self.total_deleted += 1
                     total_size += 0  # Verified empty, size = 0
                     verified_empty += 1
@@ -425,7 +416,7 @@ class Engine:
                     
             except OSError as e:
                 self.logger.error(f"Cannot delete {path}: {e}")
-                with self.lock: self.dashboard.stats['errors'] += 1
+                self.dashboard.increment_errors()
         
         # Persist delete/would-delete statuses
         self.db.commit()
