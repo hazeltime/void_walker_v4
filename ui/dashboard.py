@@ -32,8 +32,14 @@ class Dashboard:
 
     def stop(self):
         self.active = False
-        if hasattr(self, 'thread'):
-            self.thread.join(timeout=1.0)        # Clear dashboard area and move cursor down
+        if hasattr(self, 'thread') and self.thread is not None:
+            self.thread.join(timeout=1.0)
+            # Verify thread actually stopped
+            if self.thread.is_alive():
+                import sys
+                print("\n[!] Warning: Dashboard thread did not stop cleanly", file=sys.stderr)
+                # Thread will be terminated when program exits (daemon=True)
+        # Clear dashboard area and move cursor down
         print("\n" * 5, end="", flush=True)
     def update_current(self, path):
         with self.lock:
