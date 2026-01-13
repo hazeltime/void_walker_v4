@@ -22,8 +22,18 @@ class Database:
         self.last_error = msg
         try:
             print(msg, file=sys.stderr)
-        except Exception:
-            pass
+        except (OSError, IOError) as print_error:
+            # If stderr print fails, try to log to a fallback error file
+            try:
+                import os
+                error_log = os.path.join(os.getcwd(), "database_errors.log")
+                with open(error_log, "a", encoding="utf-8") as f:
+                    f.write(f"{msg}\n")
+            except Exception:
+                # Last resort: store in memory for retrieval
+                if not hasattr(self, '_fallback_errors'):
+                    self._fallback_errors = []
+                self._fallback_errors.append(msg)
 
     def setup(self):
         with self.lock:
