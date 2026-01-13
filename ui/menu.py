@@ -51,6 +51,11 @@ class Menu:
                         elif saved["strategy"] == "bfs": saved["strategy"] = "2"
                         elif saved["strategy"] == "dfs": saved["strategy"] = "3"
                     
+                    # Normalize all numeric values to strings (handles manually edited JSON with integers)
+                    for key in ["mode", "disk", "strategy"]:
+                        if key in saved and not isinstance(saved[key], str):
+                            saved[key] = str(saved[key])
+                    
                     defaults.update(saved)
             except (json.JSONDecodeError, IOError, KeyError) as e:
                 print(f"[!] Failed to load {self.config_file}: {e}. Using defaults.", file=sys.stderr)
