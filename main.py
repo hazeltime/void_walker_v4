@@ -1,9 +1,7 @@
 import sys
 import os
 import argparse
-import time
 import sqlite3
-from datetime import datetime
 
 # Ensure local imports work
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -119,7 +117,7 @@ def main():
     if args.resume:
         # Resume continues directly to execution section below
         # Path and config are loaded from database in Config class
-        None  # Explicit no-op to avoid empty if block
+        pass  # Explicit no-op to avoid empty if block
     # 3. Interactive Menu (if no path and not resume)
     elif not args.path:
         Menu().run_wizard()
@@ -195,8 +193,12 @@ def main():
                     engine.controller.stop()
                 # Commit and close database
                 if hasattr(engine, 'db') and engine.db:
-                    engine.db.commit()
-                    engine.db.close()
+                    try:
+                        engine.db.commit()
+                    except Exception as commit_error:
+                        print(f"[!] DB commit error: {commit_error}", file=sys.stderr)
+                    finally:
+                        engine.db.close()
                 # Shutdown executor if running
                 if hasattr(engine, 'executor') and engine.executor:
                     engine.executor.shutdown(wait=False)
