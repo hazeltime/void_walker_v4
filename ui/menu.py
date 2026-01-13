@@ -289,25 +289,30 @@ class Menu:
 
             # 2. Mode
             print("\n\033[93m2. OPERATION MODE\033[0m")
-            print("   [D] Delete Mode : ACTUALLY REMOVES EMPTY FOLDERS ONLY")
-            print("   [T] Dry Run     : Simulation only (safe, no deletion)")
-            mode = self.get_input("   Choice", "mode", ['d', 't'])
+            print("   [1] Dry Run     : Simulation only (safe, no deletion)")
+            print("   [2] Delete Mode : ACTUALLY REMOVES EMPTY FOLDERS ONLY")
+            mode_choice = self.get_input("   Choice [1-2]", "mode", ['1', '2'])
+            mode = 't' if mode_choice == '1' else 'd'
             self.defaults["mode"] = mode
 
             # 3. Hardware
             print("\n\033[93m3. HARDWARE STRATEGY\033[0m")
-            print("   [A] Auto (Safe)  - Detects SSD/HDD")
-            print("   [S] SSD (Fast)   - 16 threads, BFS")
-            print("   [H] HDD (Safe)   - 4 threads, DFS")
-            disk = self.get_input("   Choice", "disk", ['a', 's', 'h'])
+            print("   [1] Auto (Recommended) - Detects SSD/HDD automatically")
+            print("   [2] SSD (Fast)         - 16 threads, BFS strategy")
+            print("   [3] HDD (Safe)         - 4 threads, DFS strategy")
+            disk_choice = self.get_input("   Choice [1-3]", "disk", ['1', '2', '3'])
+            disk_map = {'1': 'auto', '2': 'ssd', '3': 'hdd'}
+            disk = disk_map[disk_choice]
             self.defaults["disk"] = disk
 
             # 4. Strategy
             print("\n\033[93m4. SCAN STRATEGY\033[0m")
-            print("   [A] Auto - Match hardware")
-            print("   [B] BFS  - Breadth-first (parallel)")
-            print("   [D] DFS  - Depth-first (sequential)")
-            strategy = self.get_input("   Choice", "strategy", ['a', 'b', 'd'])
+            print("   [1] Auto (Recommended) - Match hardware type")
+            print("   [2] BFS (Parallel)     - Breadth-first search")
+            print("   [3] DFS (Sequential)   - Depth-first search")
+            strategy_choice = self.get_input("   Choice [1-3]", "strategy", ['1', '2', '3'])
+            strategy_map = {'1': 'auto', '2': 'bfs', '3': 'dfs'}
+            strategy = strategy_map[strategy_choice]
             self.defaults["strategy"] = strategy
 
             # 5. Workers
@@ -361,19 +366,19 @@ class Menu:
                     "$RECYCLE.BIN": "*$RECYCLE.BIN*"
                 }
                 
-                print("\n   \033[96m[A]\033[0m All system folders (recommended)")
-                print("   \033[96m[C]\033[0m Custom selection")
-                print("   \033[96m[N]\033[0m None (skip)")
+                print("\n   \033[96m[1]\033[0m All system folders (recommended)")
+                print("   \033[96m[2]\033[0m Custom selection")
+                print("   \033[96m[3]\033[0m None (skip)")
                 
-                win_choice = input("   Your choice [\033[1;93mN\033[0m]: ").strip().upper()
+                win_choice = input("   Your choice [\033[1;93m3\033[0m]: ").strip() or '3'
                 
-                if win_choice == 'A':
+                if win_choice == '1':
                     # Add all Windows exclusions
                     for folder_name, pattern in windows_defaults.items():
                         if pattern not in exclude_paths:
                             exclude_paths.append(pattern)
                     print(f"   \033[92m[✓] Added {len(windows_defaults)} Windows system folders to exclusions\033[0m")
-                elif win_choice == 'C':
+                elif win_choice == '2':
                     print("\n   \033[90mEnter folder numbers to exclude (e.g., 1,3,5):\033[0m")
                     for idx, (name, pattern) in enumerate(windows_defaults.items(), 1):
                         print(f"   \033[96m[{idx}]\033[0m {name:25} ({pattern})")
@@ -411,21 +416,21 @@ class Menu:
 
             # 9. Confirm Action
             print("\n\033[93m9. CONFIRM\033[0m")
-            print("   [R] Run Analysis Now")
-            print("   [S] Save Config & Run")
-            print("   [C] Cancel (return to main menu)")
-            print("   [Q] Quit")
-            action = input("   Choice [R]: ").strip().lower()
+            print("   [1] Run Now         - Start scan immediately")
+            print("   [2] Save & Run      - Save configuration, then run")
+            print("   [3] Back to Menu    - Return to main menu")
+            print("   [4] Quit            - Exit application")
+            action = input("   Choice [1]: ").strip() or '1'
 
-            if action == 's':
+            if action == '2':
                 self.save_config()
                 print("   \033[92m[✓] Configuration saved to void_walker_config.json\033[0m")
                 time.sleep(1)
 
-            if action == 'c':
+            if action == '3':
                 return  # Return to main menu
             
-            if action == 'q':
+            if action == '4':
                 self.confirm_quit()
                 return
 
@@ -539,9 +544,12 @@ class Menu:
         """Display cache status"""
         cmd = [sys.executable, "main.py", "--show-cache"]
         try:
-            result = subprocess.run(cmd)
+            # Short timeout for cache display (should be quick)
+            result = subprocess.run(cmd, timeout=30)
             if result.returncode != 0:
                 print(f"[!] Cache command failed with exit code {result.returncode}", file=sys.stderr)
+        except subprocess.TimeoutExpired:
+            print(f"[!] Cache command timed out after 30 seconds", file=sys.stderr)
         except (subprocess.SubprocessError, OSError) as e:
             print(f"[!] Failed to show cache: {e}", file=sys.stderr)
         input("\nPress Enter to continue...")
@@ -568,6 +576,7 @@ class Menu:
             cmd.append("--delete")
         
         try:
+            # No timeout - resume can take hours for large scans
             result = subprocess.run(cmd)
             if result.returncode != 0:
                 print(f"[!] Resume failed with exit code {result.returncode}", file=sys.stderr)
@@ -638,6 +647,7 @@ class Menu:
         
         try:
             # Use unbuffered mode for immediate output visibility
+            # No timeout - scans can take hours for large directory trees
             if getattr(sys, 'frozen', False):
                 result = subprocess.run(cmd)
             else:
