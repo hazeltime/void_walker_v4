@@ -2,13 +2,11 @@ import os
 import sys
 import time
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 from typing import Optional, Tuple
 import fnmatch
 import stat
-import re
-from datetime import datetime
 
 from data.database import Database
 from ui.dashboard import Dashboard

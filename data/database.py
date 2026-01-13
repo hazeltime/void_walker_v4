@@ -197,28 +197,28 @@ class Database:
     @staticmethod
     def get_last_incomplete_session(db_path: str) -> Optional[Dict[str, Any]]:
         """Get the most recent incomplete session for resume"""
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id, config, root_path, timestamp
-            FROM sessions
-            WHERE completed=0
-            ORDER BY timestamp DESC
-            LIMIT 1
-        """)
-        result = cursor.fetchone()
-        conn.close()
+        # Use context manager to ensure connection is closed even if exception occurs
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, config, root_path, timestamp
+                FROM sessions
+                WHERE completed=0
+                ORDER BY timestamp DESC
+                LIMIT 1
+            """)
+            result = cursor.fetchone()
 
-        if result:
-            session_id, config_json, root_path, timestamp = result
-            config = json.loads(config_json) if config_json else {}
-            return {
-                'session_id': session_id,
-                'config': config,
-                'root_path': root_path,
-                'timestamp': timestamp
-            }
-        return None
+            if result:
+                session_id, config_json, root_path, timestamp = result
+                config = json.loads(config_json) if config_json else {}
+                return {
+                    'session_id': session_id,
+                    'config': config,
+                    'root_path': root_path,
+                    'timestamp': timestamp
+                }
+            return None
 
     def commit(self):
         try:

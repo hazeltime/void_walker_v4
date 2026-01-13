@@ -23,64 +23,64 @@ def show_cache_status(db_path="void_walker_history.db"):
         return
     
     try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        # Get all sessions
-        cursor.execute("SELECT id, timestamp FROM sessions ORDER BY timestamp DESC LIMIT 10")
-        sessions = cursor.fetchall()
-        
-        if not sessions:
-            print("[!] No previous sessions found.")
-            return
-        
-        print("\n" + "="*70)
-        print(" CACHED SESSIONS")
-        print("="*70)
-        
-        for session_id, timestamp in sessions:
-            # Get session stats
-            cursor.execute("""
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN status='SCANNED' THEN 1 ELSE 0 END) as scanned,
-                    SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) as pending,
-                    SUM(CASE WHEN status='ERROR' THEN 1 ELSE 0 END) as errors,
-                    SUM(CASE WHEN status='DELETED' THEN 1 ELSE 0 END) as deleted,
-                    SUM(CASE WHEN status='WOULD_DELETE' THEN 1 ELSE 0 END) as would_delete
-                FROM folders WHERE session_id=?
-            """, (session_id,))
+        # Use context manager to ensure connection is closed even if exception occurs
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
             
-            stats = cursor.fetchone()
-            total = stats[0] or 0
-            scanned = stats[1] or 0
-            pending = stats[2] or 0
-            errors = stats[3] or 0
-            deleted = stats[4] or 0
-            would_delete = stats[5] or 0
+            # Get all sessions
+            cursor.execute("SELECT id, timestamp FROM sessions ORDER BY timestamp DESC LIMIT 10")
+            sessions = cursor.fetchall()
             
-            # Get root path
-            cursor.execute("SELECT path FROM folders WHERE session_id=? ORDER BY depth ASC LIMIT 1", (session_id,))
-            root = cursor.fetchone()
-            root_path = root[0] if root else "Unknown"
+            if not sessions:
+                print("[!] No previous sessions found.")
+                return
             
-            completion = (scanned / total * 100) if total > 0 else 0
+            print("\n" + "="*70)
+            print(" CACHED SESSIONS")
+            print("="*70)
             
-            print(f"\n Session: {session_id}")
-            print(f" Time:    {timestamp}")
-            print(f" Root:    {root_path}")
-            print(f" Status:  {scanned}/{total} scanned ({completion:.1f}% complete)")
-            if pending > 0:
-                print(f" [!] {pending} folders pending (can resume with --resume)")
-            if deleted > 0:
-                print(f" [OK] {deleted} folders deleted")
-            if would_delete > 0:
-                print(f" [OK] {would_delete} empty folders identified (dry run)")
-            if errors > 0:
-                print(f" ✗ {errors} errors")
-            print("-"*70)
+            for session_id, timestamp in sessions:
+                # Get session stats
+                cursor.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status='SCANNED' THEN 1 ELSE 0 END) as scanned,
+                        SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) as pending,
+                        SUM(CASE WHEN status='ERROR' THEN 1 ELSE 0 END) as errors,
+                        SUM(CASE WHEN status='DELETED' THEN 1 ELSE 0 END) as deleted,
+                        SUM(CASE WHEN status='WOULD_DELETE' THEN 1 ELSE 0 END) as would_delete
+                    FROM folders WHERE session_id=?
+                """, (session_id,))
+                
+                stats = cursor.fetchone()
+                total = stats[0] or 0
+                scanned = stats[1] or 0
+                pending = stats[2] or 0
+                errors = stats[3] or 0
+                deleted = stats[4] or 0
+                would_delete = stats[5] or 0
+                
+                # Get root path
+                cursor.execute("SELECT path FROM folders WHERE session_id=? ORDER BY depth ASC LIMIT 1", (session_id,))
+                root = cursor.fetchone()
+                root_path = root[0] if root else "Unknown"
+                
+                completion = (scanned / total * 100) if total > 0 else 0
+                
+                print(f"\n Session: {session_id}")
+                print(f" Time:    {timestamp}")
+                print(f" Root:    {root_path}")
+                print(f" Status:  {scanned}/{total} scanned ({completion:.1f}% complete)")
+                if pending > 0:
+                    print(f" [!] {pending} folders pending (can resume with --resume)")
+                if deleted > 0:
+                    print(f" [OK] {deleted} folders deleted")
+                if would_delete > 0:
+                    print(f" [OK] {would_delete} empty folders identified (dry run)")
+                if errors > 0:
+                    print(f" ✗ {errors} errors")
+                print("-"*70)
         
-        conn.close()
         print("\n")
         
     except Exception as e:
