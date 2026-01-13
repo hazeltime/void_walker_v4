@@ -46,7 +46,9 @@ class Reporter:
         print(f" Log File:         logs/{self.config.session_id}.log")
         print("-" * 70)
         print(f" Total Scanned:    {total_scanned:,} folders")
-        print(f" Empty Found:      {total_empty:,} folders ({total_empty*100/max(total_scanned,1):.1f}%)")
+        # Safe percentage calculation (avoid division by zero)
+        empty_pct = (total_empty * 100 / total_scanned) if total_scanned > 0 else 0.0
+        print(f" Empty Found:      {total_empty:,} folders ({empty_pct:.1f}%)")
         print(f" Errors:           {total_errors:,} folders")
         print("-" * 70)
         
@@ -61,7 +63,9 @@ class Reporter:
                 if len(display_root) > 50:
                     display_root = "..." + display_root[-47:]
                 print(f"   {idx}. {display_root}")
-                print(f"      Empty subfolders: {count:,} ({count*100/max(total_empty,1):.1f}% of total)")
+                # Safe percentage calculation
+                pct = (count * 100 / total_empty) if total_empty > 0 else 0.0
+                print(f"      Empty subfolders: {count:,} ({pct:.1f}% of total)")
         else:
             print("   (No empty folders found)")
         

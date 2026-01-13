@@ -138,6 +138,8 @@ class Config:
                         return "hdd"
             except subprocess.TimeoutExpired:
                 print("\033[90m[i] Disk detection timeout, defaulting to HDD\033[0m")
+            except subprocess.CalledProcessError as e:
+                print(f"\033[90m[i] PowerShell command failed: {e}, defaulting to HDD\033[0m")
             except (FileNotFoundError, OSError) as e:
                 print(f"\033[90m[i] PowerShell unavailable: {e}, defaulting to HDD\033[0m")
             except Exception as e:

@@ -17,6 +17,9 @@ def setup_logger(session_id: str) -> logging.Logger:
     logger = logging.getLogger("VoidWalker")
     logger.setLevel(logging.INFO)
     
+    # Clear existing handlers to prevent accumulation (memory leak fix)
+    logger.handlers.clear()
+    
     # File Handler
     fh = logging.FileHandler(f"logs/{session_id}.log", encoding='utf-8')
     fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))

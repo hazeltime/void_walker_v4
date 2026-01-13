@@ -4,6 +4,7 @@ Ensures all configuration values are within acceptable ranges and formats.
 """
 import os
 import re
+import warnings
 from typing import Optional, List
 from common.constants import MIN_WORKERS, MAX_WORKERS, ABSOLUTE_MAX_DEPTH
 
@@ -30,7 +31,6 @@ class ConfigValidator:
             raise ValueError(f"Worker count must be >= 1, got {count}")
         
         if count > MAX_WORKERS:
-            import warnings
             warnings.warn(
                 f"Worker count {count} exceeds recommended maximum {MAX_WORKERS}, "
                 f"capping to {MAX_WORKERS} to prevent resource exhaustion"
@@ -63,7 +63,6 @@ class ConfigValidator:
             )
         
         if max_depth > ABSOLUTE_MAX_DEPTH:
-            import warnings
             warnings.warn(
                 f"Maximum depth {max_depth} exceeds safety limit {ABSOLUTE_MAX_DEPTH}, "
                 f"capping to {ABSOLUTE_MAX_DEPTH}"
@@ -148,7 +147,6 @@ class ConfigValidator:
         if pattern_type == "path" and '**' in pattern:
             # Ensure ** is used correctly (not in middle of word)
             if re.search(r'\w\*\*|\*\*\w', pattern):
-                import warnings
                 warnings.warn(
                     f"Pattern '{pattern}' has ** in unexpected position, "
                     f"may not match as intended"
@@ -179,7 +177,6 @@ class ConfigValidator:
                         ConfigValidator.validate_pattern(pattern, "path")
                     )
                 except ValueError as e:
-                    import warnings
                     warnings.warn(f"Skipping invalid path pattern: {e}")
         
         validated_names = []
@@ -190,7 +187,6 @@ class ConfigValidator:
                         ConfigValidator.validate_pattern(pattern, "name")
                     )
                 except ValueError as e:
-                    import warnings
                     warnings.warn(f"Skipping invalid name pattern: {e}")
         
         return validated_paths, validated_names

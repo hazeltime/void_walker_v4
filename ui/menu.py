@@ -54,8 +54,14 @@ class Menu:
                     
                     # Normalize all numeric values to strings (handles manually edited JSON with integers)
                     for key in ["mode", "disk", "strategy"]:
-                        if key in saved and not isinstance(saved[key], str):
-                            saved[key] = str(saved[key])
+                        if key in saved:
+                            # Validate type before conversion to prevent errors
+                            if isinstance(saved[key], (int, float, str)):
+                                saved[key] = str(saved[key])
+                            else:
+                                # Invalid type, use default
+                                print(f"[!] Invalid type for {key}: {type(saved[key])}, using default", file=sys.stderr)
+                                saved.pop(key, None)
                     
                     defaults.update(saved)
             except (json.JSONDecodeError, IOError, KeyError) as e:

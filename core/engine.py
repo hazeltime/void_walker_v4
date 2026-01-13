@@ -469,6 +469,9 @@ class Engine:
                     if processed % 10 == 0:
                         print(f"\r[*] Verified: {verified_empty}/{len(candidates)} empty folders (0 bytes each)", end='', flush=True)
                     
+            except NotADirectoryError as e:
+                self.logger.error(f"Not a directory {path}: {e}")
+                self.dashboard.increment_errors()
             except OSError as e:
                 self.logger.error(f"Cannot delete {path}: {e}")
                 self.dashboard.increment_errors()

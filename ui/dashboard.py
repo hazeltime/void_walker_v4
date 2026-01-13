@@ -43,7 +43,8 @@ class Dashboard:
     def stop(self):
         self.active = False
         if hasattr(self, 'thread') and self.thread is not None:
-            self.thread.join(timeout=1.0)
+            # Increased timeout for slower systems (was 1.0s, now 3.0s)
+            self.thread.join(timeout=3.0)
             # Verify thread actually stopped
             if self.thread.is_alive():
                 print("\n[!] Warning: Dashboard thread did not stop cleanly", file=sys.stderr)
