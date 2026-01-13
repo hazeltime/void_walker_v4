@@ -141,9 +141,12 @@ class Config:
             except (FileNotFoundError, OSError) as e:
                 print(f"\033[90m[i] PowerShell unavailable: {e}, defaulting to HDD\033[0m")
             except Exception as e:
+                # Log to stderr for non-critical disk detection failures
                 try:
+                    import sys
                     print(f"[!] Disk detection failed: {e}", file=sys.stderr)
-                except Exception:
+                except (OSError, IOError):
+                    # If stderr is unavailable, silently default (non-critical)
                     pass
             
             # Heuristic: C: drive often SSD in modern systems
