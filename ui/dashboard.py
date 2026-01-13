@@ -93,12 +93,17 @@ class Dashboard:
     def _loop(self):
         i = 0
         first_run = True
+        last_cols_check = 0
+        cols = self.DEFAULT_TERMINAL_WIDTH
         
         while self.active:
-            try:
-                cols = shutil.get_terminal_size().columns
-            except OSError:
-                cols = self.DEFAULT_TERMINAL_WIDTH
+            # Check terminal size every 10 iterations to reduce syscalls
+            if i % 10 == 0 or last_cols_check == 0:
+                try:
+                    cols = shutil.get_terminal_size().columns
+                    last_cols_check = i
+                except OSError:
+                    cols = self.DEFAULT_TERMINAL_WIDTH
             
             s = self.SPINNER_CHARS[i % len(self.SPINNER_CHARS)]
             

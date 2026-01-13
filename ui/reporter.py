@@ -6,7 +6,8 @@ class Reporter:
         self.config = config
         self.db = db
         
-    def show_summary(self):
+    def show_summary(self) -> None:
+        """Display session summary report with error statistics."""
         print("\n" + "="*60)
         print(" SESSION REPORT")
         print("="*60)

@@ -2,7 +2,10 @@ import sqlite3
 import json
 import threading
 import sys
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, List, Tuple, Dict, Any, Callable, TypeVar
+
+# Type variable for generic database operation
+T = TypeVar('T')
 
 class Database:
     def __init__(self, db_path, session_id):
@@ -13,6 +16,17 @@ class Database:
         self.lock = threading.Lock()
         self.error_count = 0
         self.last_error = None
+    
+    def _execute_safe(self, operation_name: str, func: Callable[[], T], path: Optional[str] = None) -> Optional[T]:
+        """Execute database operation with comprehensive error handling."""
+        try:
+            return func()
+        except sqlite3.Error as e:
+            self._record_error(operation_name, e, path)
+            return None
+        except Exception as e:
+            self._record_error(operation_name, e, path)
+            return None
 
     def _record_error(self, action, error, path=None):
         self.error_count += 1
@@ -77,19 +91,17 @@ class Database:
         print(f"\033[90m       Database ready ({total_sessions} total sessions)\033[0m")
 
     def add_folder(self, path: str, depth: int) -> bool:
-        try:
+        """Add folder to database with error handling."""
+        def execute():
             with self.lock:
                 self.cursor.execute(
                     "INSERT OR IGNORE INTO folders (path, session_id, depth) VALUES (?, ?, ?)",
                     (path, self.session_id, depth)
                 )
             return True
-        except sqlite3.Error as e:
-            self._record_error("add_folder", e, path)
-            return False
-        except Exception as e:
-            self._record_error("add_folder", e, path)
-            return False
+        
+        result = self._execute_safe("add_folder", execute, path)
+        return result if result is not None else False
 
     def update_folder_stats(self, path, file_count):
         try:

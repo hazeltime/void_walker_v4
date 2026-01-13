@@ -1,11 +1,18 @@
 import os
+from typing import Tuple
 
-def normalize_path(raw_path):
+def normalize_path(raw_path: str) -> str:
     """
     Cleans inputs like:
     - "E:\"  (Windows Copy Path artifact)
     - 'E:/'  (Unix style)
     - E:     (Drive root)
+    
+    Args:
+        raw_path: Raw path string to normalize
+        
+    Returns:
+        Normalized path string
     """
     if raw_path is None: 
         return ""
@@ -27,8 +34,16 @@ def normalize_path(raw_path):
         
     return path
 
-def validate_target_path(path):
-    """Checks if path exists and permissions are sufficient."""
+def validate_target_path(path: str) -> Tuple[bool, str]:
+    """
+    Checks if path exists and permissions are sufficient.
+    
+    Args:
+        path: Path to validate
+        
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
     clean = normalize_path(path)
     
     if not clean:
