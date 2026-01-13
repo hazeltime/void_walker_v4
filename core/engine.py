@@ -80,7 +80,6 @@ class Engine:
         
         # Stop dashboard AFTER all work is done
         self.dashboard.stop()
-        time.sleep(0.3)  # Give dashboard time to clean up
         self.controller.stop()
     
     def scan_only(self):
@@ -122,7 +121,6 @@ class Engine:
         
         # Stop dashboard and controller after scan
         self.dashboard.stop()
-        time.sleep(0.3)  # Give dashboard time to clean up
         self.controller.stop()
         self.logger.info("Scan phase complete - controller and dashboard stopped")
     
@@ -142,7 +140,6 @@ class Engine:
         
         # Stop dashboard and controller
         self.dashboard.stop()
-        time.sleep(0.3)
         self.controller.stop()
 
     def _load_resume_state(self):
@@ -379,7 +376,7 @@ class Engine:
                 
                 # First check: os.listdir (primary guard)
                 contents = os.listdir(path)
-                if len(contents) > 0:
+                if contents:
                     # NOT EMPTY - skip this folder
                     self.logger.warning(f"Skipped {path}: contains {len(contents)} items")
                     continue

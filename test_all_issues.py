@@ -19,8 +19,7 @@ def run_with_timeout(cmd, timeout=10, input_text=None):
             input=input_text,
             capture_output=True,
             text=True,
-            timeout=timeout,
-            shell=True
+            timeout=timeout
         )
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
