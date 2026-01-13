@@ -115,6 +115,22 @@ SPINNER_CHARS = ["|", "/", "-", "\\"]
 
 
 # =============================================================================
+# ENGINE PERFORMANCE TUNING
+# =============================================================================
+ENGINE_COMMIT_INTERVAL = 10  # Seconds between database commits
+ENGINE_PROGRESS_UPDATE_INTERVAL = 50  # Items processed between progress updates
+ENGINE_WORKER_CAPACITY_MULTIPLIER = 2  # Futures queue = workers * multiplier
+ENGINE_QUEUE_POLL_SLEEP = 0.01  # Seconds between queue checks
+
+
+# =============================================================================
+# CONTROLLER SETTINGS
+# =============================================================================
+CONTROLLER_POLL_INTERVAL = 0.25  # Seconds between keyboard polls (60% less CPU than 0.1s)
+CONTROLLER_PAUSE_CHECK_INTERVAL = 0.5  # Seconds between pause state checks
+
+
+# =============================================================================
 # ANSI COLOR CODES
 # =============================================================================
 class Color:

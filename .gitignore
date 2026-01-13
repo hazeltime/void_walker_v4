@@ -40,6 +40,11 @@ htmlcov/
 *.cover
 .hypothesis/
 test_scan_temp/
+test_output*.txt
+# Root-level test files (should be in tests/ folder)
+/test_*.py
+/validate.py
+/verify_safety.py
 
 # Temporary files
 *.tmp

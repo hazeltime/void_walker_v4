@@ -102,6 +102,32 @@ class Database:
         
         result = self._execute_safe("add_folder", execute, path)
         return result if result is not None else False
+    
+    def add_folders_batch(self, folders: List[Tuple[str, int]]) -> int:
+        """
+        Add multiple folders in a single transaction for performance.
+        
+        Args:
+            folders: List of (path, depth) tuples to insert
+            
+        Returns:
+            Number of folders successfully inserted (0 if error)
+        """
+        if not folders:
+            return 0
+            
+        def execute():
+            with self.lock:
+                # Prepare batch data with session_id
+                batch_data = [(path, self.session_id, depth) for path, depth in folders]
+                self.cursor.executemany(
+                    "INSERT OR IGNORE INTO folders (path, session_id, depth) VALUES (?, ?, ?)",
+                    batch_data
+                )
+                return len(folders)
+        
+        result = self._execute_safe("add_folders_batch", execute)
+        return result if result is not None else 0
 
     def update_folder_stats(self, path, file_count):
         def execute():

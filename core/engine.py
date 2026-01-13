@@ -12,12 +12,14 @@ from data.database import Database
 from ui.dashboard import Dashboard
 from ui.reporter import Reporter
 from .controller import Controller
+from common.constants import (
+    ENGINE_COMMIT_INTERVAL,
+    ENGINE_PROGRESS_UPDATE_INTERVAL,
+    ENGINE_WORKER_CAPACITY_MULTIPLIER,
+    ENGINE_QUEUE_POLL_SLEEP
+)
 
 class Engine:
-    # Configuration constants
-    COMMIT_INTERVAL = 10  # Seconds between database commits
-    PROGRESS_UPDATE_INTERVAL = 50  # Items processed between progress updates
-    WORKER_CAPACITY_MULTIPLIER = 2  # Futures queue = workers * multiplier
     
     def __init__(self, config, logger):
         self.config = config
@@ -38,6 +40,12 @@ class Engine:
         self.total_empty = 0
         self.total_errors = 0
         self.total_deleted = 0
+        
+        # Use constants from common.constants
+        self.commit_interval = ENGINE_COMMIT_INTERVAL
+        self.progress_update_interval = ENGINE_PROGRESS_UPDATE_INTERVAL
+        self.worker_capacity_multiplier = ENGINE_WORKER_CAPACITY_MULTIPLIER
+        self.queue_poll_sleep = ENGINE_QUEUE_POLL_SLEEP
 
     def start(self):
         print("\n\033[96m[*] Initializing Void Walker...\033[0m")
@@ -220,7 +228,7 @@ class Engine:
                         break
                 
                 # Submit work while queue has items and we have capacity
-                while len(futures) < self.config.workers * self.WORKER_CAPACITY_MULTIPLIER:
+                while len(futures) < self.config.workers * self.worker_capacity_multiplier:
                     with self.state_lock:
                         if not self.running:
                             break
@@ -248,7 +256,7 @@ class Engine:
                                 self.logger.error(f"Worker error: {e}")
                     
                     # Periodic commits for resume capability
-                    if time.time() - self.last_commit_time >= self.COMMIT_INTERVAL:
+                    if time.time() - self.last_commit_time >= self.commit_interval:
                         self.db.commit()
                         self.last_commit_time = time.time()
                         self.logger.info(f"Progress saved: {self.total_scanned} folders scanned")
@@ -260,10 +268,10 @@ class Engine:
                     break
                 
                 # Progress update to show activity
-                if items_processed > 0 and items_processed % self.PROGRESS_UPDATE_INTERVAL == 0:
+                if items_processed > 0 and items_processed % self.progress_update_interval == 0:
                     print(f"\r[*] Progress: {self.total_scanned} folders | {self.total_empty} empty | Queue: {self._queue_size()}", end='', flush=True)
                 
-                time.sleep(0.01)  # Small sleep to prevent busy-wait
+                time.sleep(self.queue_poll_sleep)  # Small sleep to prevent busy-wait
             
             # Shut down executor and wait for all workers to complete
             executor.shutdown(wait=True)
