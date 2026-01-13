@@ -124,6 +124,7 @@ def main():
         return
 
     # 3. Initialization
+    engine = None
     try:
         config = Config(args)
         logger = setup_logger(config.session_id)
@@ -144,11 +145,32 @@ def main():
         print("\n" + "-"*70, flush=True)
 
     except KeyboardInterrupt:
-        print("\n[!] User Force Exit")
+        print("\n[!] User Force Exit - Cleaning up...")
+        if engine:
+            logger.info("User interrupted - performing cleanup")
     except Exception as e:
         print(f"\n[CRITICAL ERROR] {e}")
         import traceback
         traceback.print_exc()
+    finally:
+        # Ensure cleanup happens regardless of exit reason
+        if engine:
+            try:
+                # Stop dashboard if running
+                if hasattr(engine, 'dashboard') and engine.dashboard:
+                    engine.dashboard.stop()
+                # Stop controller if running
+                if hasattr(engine, 'controller') and engine.controller:
+                    engine.controller.stop()
+                # Commit and close database
+                if hasattr(engine, 'db') and engine.db:
+                    engine.db.commit()
+                    engine.db.close()
+                # Shutdown executor if running
+                if hasattr(engine, 'executor') and engine.executor:
+                    engine.executor.shutdown(wait=False)
+            except Exception as cleanup_error:
+                print(f"[!] Cleanup error: {cleanup_error}", file=sys.stderr)
 
 if __name__ == "__main__":
     main()
