@@ -30,7 +30,8 @@ class Dashboard:
             "queue_depth": 0,
             "active_workers": 0,
             "total_size_bytes": 0,  # Total bytes processed
-            "processing_speed_bps": 0.0  # Bytes per second
+            "processing_speed_bps": 0.0,  # Bytes per second
+            "eta_seconds": 0  # Estimated time remaining
         }
         self.start_time = time.time()
 
@@ -151,11 +152,17 @@ class Dashboard:
             size_str = format_bytes(total_bytes)
             speed_str = format_bytes(speed_bps) + "/s" if speed_bps > 0 else "0B/s"
             
+            # Calculate ETA based on queue depth and scan rate
+            eta_str = "--:--:--"
+            if rate > 0 and queue > 0:
+                eta_seconds = int(queue / rate)
+                eta_str = str(timedelta(seconds=eta_seconds))
+            
             # Build output lines
             line1 = f"[{s}] {self.phase} | {self.status} | Workers: {self.config.workers}"
             line2 = f"{path}"
             line3 = f"Scanned: {scanned} | Rate: {rate:.1f}/s | Queue: {queue} | Empty: {empty} | Deleted: {deleted} | Errors: {errors} | Time: {elapsed_str}"
-            line4 = f"Size: {size_str} | Speed: {speed_str} | " + "-" * max(0, min(60, cols) - 30)
+            line4 = f"Size: {size_str} | Speed: {speed_str} | ETA: {eta_str} | " + "-" * max(0, min(60, cols) - 50)
             
             # Clear and rewrite (move cursor up on subsequent runs)
             if not first_run:

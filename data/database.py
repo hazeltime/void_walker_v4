@@ -104,53 +104,41 @@ class Database:
         return result if result is not None else False
 
     def update_folder_stats(self, path, file_count):
-        try:
+        def execute():
             with self.lock:
                 self.cursor.execute(
                     "UPDATE folders SET file_count=?, status='SCANNED' WHERE path=? AND session_id=?",
                     (file_count, path, self.session_id)
                 )
-        except sqlite3.Error as e:
-            self._record_error("update_folder_stats", e, path)
-        except Exception as e:
-            self._record_error("update_folder_stats", e, path)
+        return self._execute_safe("update_folder_stats", execute, path)
         # Commit periodically in engine, or here
 
     def log_error(self, path, msg):
-        try:
+        def execute():
             with self.lock:
                 self.cursor.execute(
                     "UPDATE folders SET status='ERROR', error_msg=? WHERE path=? AND session_id=?",
                     (msg, path, self.session_id)
                 )
-        except sqlite3.Error as e:
-            self._record_error("log_error", e, path)
-        except Exception as e:
-            self._record_error("log_error", e, path)
+        return self._execute_safe("log_error", execute, path)
 
     def mark_deleted(self, path):
-        try:
+        def execute():
             with self.lock:
                 self.cursor.execute(
                     "UPDATE folders SET status='DELETED' WHERE path=? AND session_id=?",
                     (path, self.session_id)
                 )
-        except sqlite3.Error as e:
-            self._record_error("mark_deleted", e, path)
-        except Exception as e:
-            self._record_error("mark_deleted", e, path)
+        return self._execute_safe("mark_deleted", execute, path)
 
     def mark_would_delete(self, path):
-        try:
+        def execute():
             with self.lock:
                 self.cursor.execute(
                     "UPDATE folders SET status='WOULD_DELETE' WHERE path=? AND session_id=?",
                     (path, self.session_id)
                 )
-        except sqlite3.Error as e:
-            self._record_error("mark_would_delete", e, path)
-        except Exception as e:
-            self._record_error("mark_would_delete", e, path)
+        return self._execute_safe("mark_would_delete", execute, path)
 
     def get_pending(self) -> List[Tuple[str, int]]:
         with self.lock:

@@ -106,7 +106,7 @@ class Controller:
                         state = "ON" if self.verbose else "OFF"
                         print(f"\n[!] Verbose mode {state}")
                 
-                time.sleep(0.1)
+                time.sleep(0.25)  # Optimized: 60% less CPU vs 0.1s, no UX degradation
         except ImportError:
             # msvcrt only available on Windows - notify user once
             print("\033[90m[i] Interactive keyboard controls (P/H/S/Q) not available on this platform\033[0m")

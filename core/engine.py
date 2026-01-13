@@ -297,24 +297,18 @@ class Engine:
             self.dashboard.update_current(path)
             self.dashboard.set_queue_depth(queue_depth)
             
-            # Calculate folder size for metrics
-            try:
-                folder_size = 0
-                with os.scandir(path) as scan_it:
-                    for entry in scan_it:
-                        try:
-                            if entry.is_file(follow_symlinks=False):
-                                folder_size += entry.stat(follow_symlinks=False).st_size
-                        except (OSError, PermissionError):
-                            pass  # Skip inaccessible files
-                self.dashboard.add_processed_size(folder_size)
-            except (OSError, PermissionError):
-                pass  # Can't read folder, skip size tracking
-
+            # OPTIMIZED: Single os.scandir pass for both size and scanning
             with os.scandir(path) as it:
                 entry_count = 0
+                folder_size = 0
                 
                 for entry in it:
+                    # Calculate size for metrics (for files only)
+                    try:
+                        if entry.is_file(follow_symlinks=False):
+                            folder_size += entry.stat(follow_symlinks=False).st_size
+                    except (OSError, PermissionError):
+                        pass  # Skip inaccessible files for size calc
                     try:
                         if entry.is_symlink():
                             continue
@@ -337,6 +331,9 @@ class Engine:
                         self.dashboard.increment_errors()
                         with self.lock:
                             self.total_errors += 1
+                
+                # Update dashboard with folder size after scanning complete
+                self.dashboard.add_processed_size(folder_size)
                 
                 self.db.update_folder_stats(path, entry_count)
                 
