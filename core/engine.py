@@ -121,15 +121,18 @@ class Engine:
         print(f"    Empty found: {self.total_empty}", flush=True)
         print(f"    Errors: {self.total_errors}\n", flush=True)
         
-        # Stop dashboard after scan
+        # Stop dashboard and controller after scan
         self.dashboard.stop()
         time.sleep(0.3)  # Give dashboard time to clean up
+        self.controller.stop()
+        self.logger.info("Scan phase complete - controller and dashboard stopped")
     
     def cleanup_only(self):
         """Phase 2: Cleanup only - assumes scanning already completed"""
         self.logger.info("Phase 2: Cleanup")
         
-        # Restart dashboard for cleanup phase
+        # Restart controller and dashboard for cleanup phase
+        self.controller.start()
         self.dashboard.start()
         self.dashboard.set_phase("CLEANUP")
         
