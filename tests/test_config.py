@@ -44,10 +44,12 @@ class TestConfig(unittest.TestCase):
         self.assertTrue(config.delete_mode)
     
     def test_resume_mode(self):
-        """Test resume mode configuration"""
-        args = MockArgs(resume=True, path=None)
-        with self.assertRaises(ValueError):
+        """Test resume mode configuration requires resume flag without path"""
+        # Test that resume with path raises error
+        args = MockArgs(resume=True, path="C:\\test")
+        with self.assertRaises(ValueError) as cm:
             Config(args)
+        self.assertIn("Cannot specify path with --resume", str(cm.exception))
     
     def test_ssd_disk_type(self):
         """Test SSD disk type configuration"""
