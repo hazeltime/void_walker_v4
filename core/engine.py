@@ -13,6 +13,11 @@ from ui.dashboard import Dashboard
 from .controller import Controller
 
 class Engine:
+    # Configuration constants
+    COMMIT_INTERVAL = 10  # Seconds between database commits
+    PROGRESS_UPDATE_INTERVAL = 50  # Items processed between progress updates
+    WORKER_CAPACITY_MULTIPLIER = 2  # Futures queue = workers * multiplier
+    
     def __init__(self, config, logger):
         self.config = config
         self.logger = logger
@@ -27,7 +32,6 @@ class Engine:
         self.running = True
         self.executor = None
         self.last_commit_time = time.time()
-        self.commit_interval = 10  # seconds
         self.scan_start_time = None
         self.total_scanned = 0
         self.total_empty = 0
@@ -205,7 +209,7 @@ class Engine:
                         break
                 
                 # Submit work while queue has items and we have capacity
-                while len(futures) < self.config.workers * 2:
+                while len(futures) < self.config.workers * self.WORKER_CAPACITY_MULTIPLIER:
                     with self.state_lock:
                         if not self.running:
                             break
@@ -233,7 +237,7 @@ class Engine:
                                 self.logger.error(f"Worker error: {e}")
                     
                     # Periodic commits for resume capability
-                    if time.time() - self.last_commit_time >= self.commit_interval:
+                    if time.time() - self.last_commit_time >= self.COMMIT_INTERVAL:
                         self.db.commit()
                         self.last_commit_time = time.time()
                         self.logger.info(f"Progress saved: {self.total_scanned} folders scanned")
@@ -244,8 +248,8 @@ class Engine:
                 if self._queue_size() == 0 and not futures:
                     break
                 
-                # Progress update every 50 items to show activity
-                if items_processed > 0 and items_processed % 50 == 0:
+                # Progress update to show activity
+                if items_processed > 0 and items_processed % self.PROGRESS_UPDATE_INTERVAL == 0:
                     print(f"\r[*] Progress: {self.total_scanned} folders | {self.total_empty} empty | Queue: {self._queue_size()}", end='', flush=True)
                 
                 time.sleep(0.01)  # Small sleep to prevent busy-wait

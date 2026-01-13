@@ -5,6 +5,13 @@ import threading
 from datetime import timedelta
 
 class Dashboard:
+    # Display constants
+    SPINNER_CHARS = ["|", "/", "-", "\\"]
+    DEFAULT_TERMINAL_WIDTH = 120
+    MIN_PATH_LENGTH = 40
+    DASHBOARD_LINES = 4  # Number of lines used by dashboard display
+    UPDATE_INTERVAL = 0.2  # Seconds between dashboard refreshes
+    
     def __init__(self, config):
         self.config = config
         self.active = False
@@ -39,7 +46,7 @@ class Dashboard:
                 print("\n[!] Warning: Dashboard thread did not stop cleanly", file=sys.stderr)
                 # Thread will be terminated when program exits (daemon=True)
         # Clear dashboard area - move cursor to start of dashboard lines and clear
-        sys.stdout.write("\033[4A")  # Move up 4 lines
+        sys.stdout.write(f"\033[{self.DASHBOARD_LINES}A")  # Move up N lines
         sys.stdout.write("\033[J")   # Clear from cursor to end
         sys.stdout.write("\n")       # Add newline for clean separation
         sys.stdout.flush()
@@ -84,7 +91,6 @@ class Dashboard:
             self.stats['queue_depth'] = depth
 
     def _loop(self):
-        spin = ["|", "/", "-", "\\"]
         i = 0
         first_run = True
         
@@ -92,9 +98,9 @@ class Dashboard:
             try:
                 cols = shutil.get_terminal_size().columns
             except OSError:
-                cols = 120
+                cols = self.DEFAULT_TERMINAL_WIDTH
             
-            s = spin[i % 4]
+            s = self.SPINNER_CHARS[i % len(self.SPINNER_CHARS)]
             
             with self.lock:
                 path = self.current_path
@@ -106,7 +112,7 @@ class Dashboard:
                 deleted = self.stats.get('deleted', 0)
             
             # Truncate path if too long
-            max_path_len = max(40, cols - 20)
+            max_path_len = max(self.MIN_PATH_LENGTH, cols - 20)
             if len(path) > max_path_len:
                 path = "..." + path[-(max_path_len-3):]
             
@@ -122,8 +128,8 @@ class Dashboard:
             
             # Clear and rewrite (move cursor up on subsequent runs)
             if not first_run:
-                # Move cursor up 4 lines and clear
-                sys.stdout.write("\033[4A")  # Move up 4 lines
+                # Move cursor up and clear
+                sys.stdout.write(f"\033[{self.DASHBOARD_LINES}A")  # Move up N lines
                 sys.stdout.write("\033[J")   # Clear from cursor to end of screen
             else:
                 first_run = False
@@ -136,7 +142,7 @@ class Dashboard:
             sys.stdout.flush()
             
             i += 1
-            time.sleep(0.2)
+            time.sleep(self.UPDATE_INTERVAL)
         
         # Final newline for clean exit
         sys.stdout.write("\n")
