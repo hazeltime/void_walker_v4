@@ -115,8 +115,9 @@ def main():
 
     # 2. Handle resume mode (doesn't need path or menu)
     if args.resume:
-        # Resume goes directly to execution, no menu
-        pass  # Continue to execution section
+        # Resume continues directly to execution section below
+        # Path and config are loaded from database in Config class
+        None  # Explicit no-op to avoid empty if block
     # 3. Interactive Menu (if no path and not resume)
     elif not args.path:
         Menu().run_wizard()
