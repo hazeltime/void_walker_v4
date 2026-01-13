@@ -101,5 +101,5 @@ class Controller:
             print("\033[90m[i] Interactive keyboard controls (P/H/S/Q) not available on this platform\033[0m")
             print("\033[90m    Use Ctrl+C to interrupt the scan\033[0m")
             # Keep thread alive but idle
-            while self.running:
+            while self.active:
                 time.sleep(1)
